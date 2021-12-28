@@ -30,6 +30,8 @@ class YouTubeLivestream:
         else:
             self.service = None
 
+        self.liveStream = None
+
     @staticmethod
     def get_service() -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
@@ -65,9 +67,38 @@ class YouTubeLivestream:
 
         return service
 
+    def get_stream(self):
+
+        # Return the existing stream
+        if self.liveStream is not None:
+            return self.liveStream
+
+        # Create a new livestream
+        response = self.service.liveStreams().insert(
+            part="snippet,cdn,contentDetails,id,status",
+            body={
+                "cdn": {
+                    "frameRate": "variable",
+                    "ingestionType": "rtmp",
+                    "resolution": "variable"
+                },
+                "contentDetails": {
+                    "isReusable": True
+                },
+                "snippet": {
+                    "title": "Birdbox Livestream"
+                }
+            }).execute()
+
+        # Save and return it
+        self.liveStream = response
+        return self.liveStream
+
 
 def main():
     yt = YouTubeLivestream()
+
+    yt.get_stream()
 
 
 if __name__ == "__main__":
