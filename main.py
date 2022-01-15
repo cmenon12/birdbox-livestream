@@ -164,6 +164,7 @@ class YouTubeLivestream:
         :raises ValueError: if the broadcast at that times doesn't exist
         """
 
+        # Check that this broadcast exists.
         if scheduledStartTime not in self.liveBroadcasts.keys():
             raise ValueError(f"The broadcast at {scheduledStartTime.isoformat()} does not exist!")
 
@@ -177,6 +178,31 @@ class YouTubeLivestream:
         # Save and return it
         self.liveBroadcast[scheduledStartTime] = broadcast
         return broadcast
+
+    def end_broadcast(self, scheduledStartTime: datetime.datetime):
+        """End the broadcast by changing it's state to complete.
+
+        :param scheduledStartTime: when the broadcast should start
+        :type scheduledStartTime: datetime.datetime, optional
+        :return: the updated YouTube liveBroadcast resource
+        :rtype: dict
+        :raises ValueError: if the broadcast at that times doesn't exist
+        """
+
+        # Check that this broadcast exists
+        if scheduledStartTime not in self.liveBroadcasts.keys():
+            raise ValueError(f"The broadcast at {scheduledStartTime.isoformat()} does not exist!")
+
+        # Change its status to complete
+        broadcast = self.service.liveBroadcast().transition(
+            broadcastStatus="complete",
+            id=self.liveBroadcasts[scheduledStartTime]["id"],
+            part="id,snippet,contentDetails,status"
+        ).execute()
+
+        # Save and return the updated resource
+        self.liveBroadcast[scheduledStartTime] = broadcast
+        return bound_broadcast
 
 
 def main():
