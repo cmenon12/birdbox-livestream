@@ -1,3 +1,4 @@
+import datetime
 import os
 import pickle
 
@@ -5,6 +6,7 @@ import googleapiclient
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from pytz import timezone
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -21,6 +23,15 @@ API_VERSION = "v3"
 # File with the user's access and refresh tokens
 TOKEN_PICKLE_FILE = "token.pickle"
 
+# Must be public, unlisted, or private
+PRIVACY_STATUS = "private"
+
+# The timezone to use throughout
+TIMEZONE = timezone("Europe\London")
+
+# The default duration in minutes
+DEFAULT_DURATION = 180
+
 
 class YouTubeLivestream:
 
@@ -31,6 +42,7 @@ class YouTubeLivestream:
             self.service = None
 
         self.liveStream = None
+        self.liveBroadcasts = {}
 
     @staticmethod
     def get_service() -> googleapiclient.discovery.Resource:
@@ -67,14 +79,19 @@ class YouTubeLivestream:
 
         return service
 
-    def get_stream(self):
+    def get_stream(self) -> dict:
+        """Gets the liveStream, creating it if needed.
+
+        :return: the YouTube liveStream resource
+        :rtype: dict
+        """
 
         # Return the existing stream
         if self.liveStream is not None:
             return self.liveStream
 
         # Create a new livestream
-        response = self.service.liveStreams().insert(
+        stream = self.service.liveStreams().insert(
             part="snippet,cdn,contentDetails,id,status",
             body={
                 "cdn": {
@@ -91,8 +108,54 @@ class YouTubeLivestream:
             }).execute()
 
         # Save and return it
-        self.liveStream = response
-        return self.liveStream
+        self.liveStream = stream
+        return stream
+
+    def create_broadcast(self, scheduledStartTime: datetime.datetime = datetime.datetime.now(tz=TIMEZONE),
+                         duration_mins: int = DEFAULT_DURATION):
+        """Creates the live broadcast and binds it to the stream.
+
+        :param scheduledStartTime: when the broadcast should start
+        :type scheduledStartTime: datetime.datetime, optional
+        :param duration_mins: how long the broadcast will last for in minutes
+        :type duration_mins: int, optional
+        :return: the YouTube liveBroadcast resource
+        :rtype: dict
+        """
+
+        # Create a new broadcast
+        broadcast = self.service.liveBroadcast().insert(
+            part="id,snippet,contentDetails,status",
+            body={
+                "contentDetails": {
+                    "enableAutoStart": True,
+                    "enableAutoStop": True,
+                    "enableClosedCaptions": False,
+                    "enableDvr": True,
+                    "enableEmbed": True,
+                    "recordFromStart": True,
+                    "startWithSlate": False
+                },
+                "snippet": {
+                    "scheduledStartTime": scheduledStartTime.isoformat(),
+                    "scheduledEndTime": (scheduledStartTime + datetime.timedelta(minutes=duration_mins)).isoformat(),
+                    "title": f"Birdbox Livestream on {scheduledStartTime.strftime('%a %-d %b at %H:%M')}"
+                },
+                "status": {
+                    "privacyStatus": PRIVACY_STATUS
+                }
+            }).execute()
+
+        # Bind the broadcast to the stream
+        bound_broadcast = self.service.liveBroadcast().insert(
+            id=broadcast["id"],
+            part="id,snippet,contentDetails,status",
+            streamId=self.get_stream()["id"]
+        ).execute()
+
+        # Save and return it
+        self.liveBroadcast[scheduledStartTime] = bound_broadcast
+        return bound_broadcast
 
 
 def main():
