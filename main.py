@@ -113,7 +113,7 @@ class YouTubeLivestream:
 
     def create_broadcast(self, scheduledStartTime: datetime.datetime = datetime.datetime.now(tz=TIMEZONE),
                          duration_mins: int = DEFAULT_DURATION):
-        """Creates the live broadcast and binds it to the stream.
+        """Creates the live broadcast.
 
         :param scheduledStartTime: when the broadcast should start
         :type scheduledStartTime: datetime.datetime, optional
@@ -122,6 +122,10 @@ class YouTubeLivestream:
         :return: the YouTube liveBroadcast resource
         :rtype: dict
         """
+
+        # Stop if a broadcast already exists at this time
+        if scheduledStartTime in self.liveBroadcasts.keys():
+            return self.liveBroadcasts[scheduledStartTime]
 
         # Create a new broadcast
         broadcast = self.service.liveBroadcast().insert(
@@ -146,16 +150,33 @@ class YouTubeLivestream:
                 }
             }).execute()
 
+        # Save and return it
+        self.liveBroadcast[scheduledStartTime] = broadcast
+        return broadcast
+
+    def start_broadcast(self, scheduledStartTime: datetime.datetime):
+        """Start the broadcast by binding the stream to it.
+
+        :param scheduledStartTime: when the broadcast should start
+        :type scheduledStartTime: datetime.datetime, optional
+        :return: the updated YouTube liveBroadcast resource
+        :rtype: dict
+        :raises ValueError: if the broadcast at that times doesn't exist
+        """
+
+        if scheduledStartTime not in self.liveBroadcasts.keys():
+            raise ValueError(f"The broadcast at {scheduledStartTime.isoformat()} does not exist!")
+
         # Bind the broadcast to the stream
-        bound_broadcast = self.service.liveBroadcast().insert(
-            id=broadcast["id"],
+        broadcast = self.service.liveBroadcast().bind(
+            id=self.liveBroadcasts[scheduledStartTime]["id"],
             part="id,snippet,contentDetails,status",
             streamId=self.get_stream()["id"]
         ).execute()
 
         # Save and return it
-        self.liveBroadcast[scheduledStartTime] = bound_broadcast
-        return bound_broadcast
+        self.liveBroadcast[scheduledStartTime] = broadcast
+        return broadcast
 
 
 def main():
