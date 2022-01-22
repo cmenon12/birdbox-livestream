@@ -264,7 +264,37 @@ class YouTubeLivestream:
 def main():
     yt = YouTubeLivestream()
 
-    yt.get_stream()
+    url = yt.get_stream_url()
+    print(f"\n{COMMAND} {url}\n")
+    # subprocess.Popen(f"{COMMAND} {url}", shell=True)
+
+    # Create the first broadcast
+    broadcast = yt.create_broadcast()
+
+    while True:
+
+        scheduled = yt.get_broadcasts(BroadcastTypes.SCHEDULED).copy()
+        live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
+
+        # Create broadcasts
+        if len(scheduled) < MAX_SCHEDULED_BROADCASTS:
+            last_start_time = max(scheduled.keys())
+            last_broadcast = scheduled[last_start_time]
+            start_time = datetime.fromisoformat(last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
+            yt.create_broadcast(start_time)
+
+        # Start broadcasts
+        for start_time in scheduled.keys():
+            if start_time <= datetime.now(tz=TIMEZONE):
+                yt.start_broadcast(start_time)
+
+        # Finish broadcasts
+        for start_time in live.keys():
+            end_time = datetime.fromisoformat(
+                live[start_time]["snippet"]["scheduledEndTime"].replace("Z",
+                                                                        "+00:00"))
+            if end_time <= datetime.now(tz=TIMEZONE):
+                yt.end_broadcast(start_time)
 
 
 if __name__ == "__main__":
