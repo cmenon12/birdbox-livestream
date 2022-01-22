@@ -1,6 +1,6 @@
-import datetime
 import os
 import pickle
+from datetime import datetime, timedelta
 
 import googleapiclient
 from google.auth.transport.requests import Request
@@ -103,7 +103,7 @@ class YouTubeLivestream:
                     "isReusable": True
                 },
                 "snippet": {
-                    "title": "Birdbox Livestream"
+                    "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).isoformat()}"
                 }
             }).execute()
 
@@ -115,8 +115,8 @@ class YouTubeLivestream:
                          duration_mins: int = DEFAULT_DURATION):
         """Creates the live broadcast.
 
-        :param scheduledStartTime: when the broadcast should start
-        :type scheduledStartTime: datetime.datetime, optional
+        :param start_time: when the broadcast should start
+        :type start_time: datetime.datetime, optional
         :param duration_mins: how long the broadcast will last for in minutes
         :type duration_mins: int, optional
         :return: the YouTube liveBroadcast resource
@@ -124,8 +124,14 @@ class YouTubeLivestream:
         """
 
         # Stop if a broadcast already exists at this time
-        if scheduledStartTime in self.liveBroadcasts.keys():
-            return self.liveBroadcasts[scheduledStartTime]
+        if start_time in self.liveBroadcasts.keys():
+            return self.liveBroadcasts[start_time]
+
+        # Round the end time to the nearest hour
+        end_time = start_time + timedelta(minutes=duration_mins)
+        end_time = end_time.replace(second=0, microsecond=0, minute=0,
+                                    hour=end_time.hour) + timedelta(
+            hours=end_time.minute // 30)
 
         # Create a new broadcast
         broadcast = self.service.liveBroadcasts().insert(
@@ -141,9 +147,9 @@ class YouTubeLivestream:
                     "startWithSlate": False
                 },
                 "snippet": {
-                    "scheduledStartTime": scheduledStartTime.isoformat(),
-                    "scheduledEndTime": (scheduledStartTime + datetime.timedelta(minutes=duration_mins)).isoformat(),
-                    "title": f"Birdbox Livestream on {scheduledStartTime.strftime('%a %d %b at %H:%M')}"
+                    "scheduledStartTime": start_time.isoformat(),
+                    "scheduledEndTime": end_time.isoformat(),
+                    "title": f"Birdbox Livestream on {start_time.strftime('%a %d %b at %H:%M')}"
                 },
                 "status": {
                     "privacyStatus": PRIVACY_STATUS,
@@ -152,57 +158,57 @@ class YouTubeLivestream:
             }).execute()
 
         # Save and return it
-        self.liveBroadcasts[scheduledStartTime] = broadcast
+        self.liveBroadcasts[start_time] = broadcast
         return broadcast
 
-    def start_broadcast(self, scheduledStartTime: datetime.datetime):
+    def start_broadcast(self, start_time: datetime):
         """Start the broadcast by binding the stream to it.
 
-        :param scheduledStartTime: when the broadcast should start
-        :type scheduledStartTime: datetime.datetime, optional
+        :param start_time: when the broadcast should start
+        :type start_time: datetime.datetime, optional
         :return: the updated YouTube liveBroadcast resource
         :rtype: dict
         :raises ValueError: if the broadcast at that times doesn't exist
         """
 
         # Check that this broadcast exists.
-        if scheduledStartTime not in self.liveBroadcasts.keys():
-            raise ValueError(f"The broadcast at {scheduledStartTime.isoformat()} does not exist!")
+        if start_time not in self.liveBroadcasts.keys():
+            raise ValueError(f"The broadcast at {start_time.isoformat()} does not exist!")
 
         # Bind the broadcast to the stream
         broadcast = self.service.liveBroadcasts().bind(
-            id=self.liveBroadcasts[scheduledStartTime]["id"],
+            id=self.liveBroadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status",
             streamId=self.get_stream()["id"]
         ).execute()
 
         # Save and return it
-        self.liveBroadcasts[scheduledStartTime] = broadcast
+        self.liveBroadcasts[start_time] = broadcast
         return broadcast
 
-    def end_broadcast(self, scheduledStartTime: datetime.datetime):
+    def end_broadcast(self, start_time: datetime):
         """End the broadcast by changing it's state to complete.
 
-        :param scheduledStartTime: when the broadcast should start
-        :type scheduledStartTime: datetime.datetime, optional
+        :param start_time: when the broadcast should start
+        :type start_time: datetime.datetime, optional
         :return: the updated YouTube liveBroadcast resource
         :rtype: dict
         :raises ValueError: if the broadcast at that times doesn't exist
         """
 
         # Check that this broadcast exists
-        if scheduledStartTime not in self.liveBroadcasts.keys():
-            raise ValueError(f"The broadcast at {scheduledStartTime.isoformat()} does not exist!")
+        if start_time not in self.liveBroadcasts.keys():
+            raise ValueError(f"The broadcast at {start_time.isoformat()} does not exist!")
 
         # Change its status to complete
         broadcast = self.service.liveBroadcasts().transition(
             broadcastStatus="complete",
-            id=self.liveBroadcasts[scheduledStartTime]["id"],
+            id=self.liveBroadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status"
         ).execute()
 
         # Save and return the updated resource
-        self.liveBroadcasts[scheduledStartTime] = broadcast
+        self.liveBroadcasts[start_time] = broadcast
         return bound_broadcast
 
     def get_broadcasts(self):
