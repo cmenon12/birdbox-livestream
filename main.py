@@ -1,6 +1,7 @@
 import os
 import pickle
 from datetime import datetime, timedelta
+from enum import Enum, auto
 
 import googleapiclient
 from google.auth.transport.requests import Request
@@ -32,6 +33,22 @@ TIMEZONE = timezone("Europe/London")
 # The default duration in minutes
 DEFAULT_DURATION = 180
 
+# The max number of broadcasts to schedule in advance
+MAX_SCHEDULED_BROADCASTS = 3
+
+# The command to start streaming, just add the RTMP address on the end
+COMMAND = "raspivid -t 0 -w 1280 -h 720 -fps 25 -n -br 60 -co 10 -sh 70 -sa -100 -l -o - -a 1548 -ae 22 -ISO 600 -b " \
+          "2000000 | ffmpeg -re -ar 44100 -ac 2 -acodec pcm_s16le -f s16le -ac 2 -i /dev/zero -f h264 -i - -vcodec " \
+          "copy -acodec aac -ab 128k -g 50 -strict experimental -f flv -b:v 2000k -b:a 1k -maxrate 2000k -bufsize " \
+          "1000k -preset veryfast "
+
+
+class BroadcastTypes(Enum):
+    SCHEDULED = auto()
+    LIVE = auto()
+    FINISHED = auto()
+    ALL = auto()
+
 
 class YouTubeLivestream:
 
@@ -42,7 +59,9 @@ class YouTubeLivestream:
             self.service = None
 
         self.liveStream = None
-        self.liveBroadcasts = {}
+        self.scheduled_broadcasts = {}
+        self.finished_broadcasts = {}
+        self.live_broadcasts = {}
 
     @staticmethod
     def get_service() -> googleapiclient.discovery.Resource:
@@ -124,8 +143,8 @@ class YouTubeLivestream:
         """
 
         # Stop if a broadcast already exists at this time
-        if start_time in self.liveBroadcasts.keys():
-            return self.liveBroadcasts[start_time]
+        if start_time in self.get_broadcasts().keys():
+            return self.get_broadcasts()[start_time]
 
         # Round the end time to the nearest hour
         end_time = start_time + timedelta(minutes=duration_mins)
@@ -158,7 +177,8 @@ class YouTubeLivestream:
             }).execute()
 
         # Save and return it
-        self.liveBroadcasts[start_time] = broadcast
+        self.scheduled_broadcasts[start_time] = broadcast
+        print(f"Created a broadcast at {start_time.isoformat()} till {end_time.isoformat()}")
         return broadcast
 
     def start_broadcast(self, start_time: datetime):
@@ -172,18 +192,20 @@ class YouTubeLivestream:
         """
 
         # Check that this broadcast exists.
-        if start_time not in self.liveBroadcasts.keys():
-            raise ValueError(f"The broadcast at {start_time.isoformat()} does not exist!")
+        if start_time not in self.scheduled_broadcasts.keys():
+            raise ValueError(f"The broadcast at {start_time.isoformat()} is not scheduled!")
 
         # Bind the broadcast to the stream
         broadcast = self.service.liveBroadcasts().bind(
-            id=self.liveBroadcasts[start_time]["id"],
+            id=self.scheduled_broadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status",
             streamId=self.get_stream()["id"]
         ).execute()
 
         # Save and return it
-        self.liveBroadcasts[start_time] = broadcast
+        self.live_broadcasts[start_time] = broadcast
+        self.scheduled_broadcasts.pop(start_time)
+        print(f"Started a broadcast at {start_time.isoformat()}")
         return broadcast
 
     def end_broadcast(self, start_time: datetime):
@@ -197,23 +219,39 @@ class YouTubeLivestream:
         """
 
         # Check that this broadcast exists
-        if start_time not in self.liveBroadcasts.keys():
-            raise ValueError(f"The broadcast at {start_time.isoformat()} does not exist!")
+        if start_time not in self.live_broadcasts.keys():
+            raise ValueError(f"The broadcast at {start_time.isoformat()} is not live!")
 
         # Change its status to complete
         broadcast = self.service.liveBroadcasts().transition(
             broadcastStatus="complete",
-            id=self.liveBroadcasts[start_time]["id"],
+            id=self.live_broadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status"
         ).execute()
 
         # Save and return the updated resource
-        self.liveBroadcasts[start_time] = broadcast
-        return bound_broadcast
+        self.finished_broadcasts[start_time] = broadcast
+        self.live_broadcasts.pop(start_time)
+        print(f"Ended a broadcast that started at {start_time.isoformat()}")
+        return broadcast
 
-    def get_broadcasts(self):
+    def get_broadcasts(self, category: BroadcastTypes = None) -> dict:
+        """Returns a dict with the broadcasts
 
-        return self.liveBroadcasts
+        :param category: the category of broadcasts if not all
+        :type category: BroadcastTypes
+        :return: a dict of the broadcasts
+        :rtype: dict
+        """
+
+        if category == BroadcastTypes.SCHEDULED:
+            return self.scheduled_broadcasts
+        elif category == BroadcastTypes.LIVE:
+            return self.live_broadcasts
+        elif category == BroadcastTypes.FINISHED:
+            return self.finished_broadcasts
+        else:
+            return {**self.scheduled_broadcasts, **self.live_broadcasts, **self.finished_broadcasts}
 
 
 def main():
