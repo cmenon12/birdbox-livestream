@@ -25,7 +25,7 @@ API_VERSION = "v3"
 TOKEN_PICKLE_FILE = "token.pickle"
 
 # Must be public, unlisted, or private
-PRIVACY_STATUS = "private"
+PRIVACY_STATUS = "unlisted"
 
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
@@ -52,11 +52,8 @@ class BroadcastTypes(Enum):
 
 class YouTubeLivestream:
 
-    def __init__(self, authorise: bool = True):
-        if authorise is True:
-            self.service = YouTubeLivestream.get_service()
-        else:
-            self.service = None
+    def __init__(self):
+        self.service = YouTubeLivestream.get_service()
 
         self.liveStream = None
         self.scheduled_broadcasts = {}
@@ -130,7 +127,17 @@ class YouTubeLivestream:
         self.liveStream = stream
         return stream
 
-    def create_broadcast(self, scheduledStartTime: datetime.datetime = datetime.datetime.now(tz=TIMEZONE),
+    def get_stream_url(self) -> str:
+        """Gets the liveStream URL, creating it if needed.
+
+        :return: the URL of the liveStream
+        :rtype: str
+        """
+
+        ingestion_info = self.get_stream()['cdn']['ingestionInfo']
+        return f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
+
+    def create_broadcast(self, start_time: datetime = datetime.now(tz=TIMEZONE),
                          duration_mins: int = DEFAULT_DURATION):
         """Creates the live broadcast.
 
@@ -168,7 +175,7 @@ class YouTubeLivestream:
                 "snippet": {
                     "scheduledStartTime": start_time.isoformat(),
                     "scheduledEndTime": end_time.isoformat(),
-                    "title": f"Birdbox Livestream on {start_time.strftime('%a %d %b at %H:%M')}"
+                    "title": f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}"
                 },
                 "status": {
                     "privacyStatus": PRIVACY_STATUS,
