@@ -8,7 +8,10 @@ import re
 import smtplib
 import ssl
 import time
+import traceback
 from datetime import datetime, timedelta
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum, auto
@@ -305,6 +308,59 @@ class YouTubeLivestream:
             return {**self.scheduled_broadcasts, **self.live_broadcasts, **self.finished_broadcasts}
 
 
+def send_error_email(config: configparser.SectionProxy, trace: str, log_filename: str):
+    """Send an email about the error.
+
+    :param config: the config for the email
+    :type config: configparser.SectionProxy
+    :param trace: the stack trace of the exception
+    :type trace: str
+    :param log_filename: the filename of the log file
+    :type log_filename: str
+    :return:
+    """
+
+    LOGGER.info("Sending the error email...")
+
+    # Create the message
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "ERROR with birdbox-livestream!"
+    message["To"] = config["to"]
+    message["From"] = config["from"]
+    message["X-Priority"] = "1"
+    message["Date"] = email.utils.formatdate()
+    email_id = email.utils.make_msgid(domain=config["smtp_host"])
+    message["Message-ID"] = email_id
+
+    # Create and attach the text
+    text = f"{trace}\n\n———\nThis email was sent automatically by a computer program (" \
+           f"https://github.com/cmenon12/birdbox-livestream). "
+    message.attach(MIMEText(text, "plain"))
+
+    LOGGER.debug("Message is %s.", message)
+
+    # Attach the log
+    part = MIMEBase("text", "plain")
+    part.set_payload(open(f"./logs/{log_filename}", "r").read())
+    encoders.encode_base64(part)
+    part.add_header("Content-Disposition",
+                    f"attachment; filename=\"{log_filename}\"")
+    part.add_header("Content-Description",
+                    f"{log_filename}")
+    message.attach(part)
+
+    # Create the SMTP connection and send the email
+    with smtplib.SMTP_SSL(config["smtp_host"],
+                          int(config["smtp_port"]),
+                          context=ssl.create_default_context()) as server:
+        server.login(config["username"], config["password"])
+        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
+                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
+                        message.as_string())
+
+    LOGGER.info("Error email sent successfully!\n")
+
+
 def main():
     # Check that the config file exists
     try:
@@ -323,52 +379,59 @@ def main():
     main_config = parser["main"]
     email_config = parser["email"]
 
-    yt = YouTubeLivestream(yt_config)
+    try:
+        yt = YouTubeLivestream(yt_config)
 
-    url = yt.get_stream_url()
-    print(f"\n{main_config['command']} {url}\n")
-    # subprocess.Popen(f"{COMMAND} {url}", shell=True)
+        url = yt.get_stream_url()
+        print(f"\n{main_config['command']} {url}\n")
+        # subprocess.Popen(f"{COMMAND} {url}", shell=True)
 
-    # Schedule the first broadcast
-    yt.schedule_broadcast()
+        # Schedule the first broadcast
+        yt.schedule_broadcast()
 
-    while True:
+        while True:
 
-        scheduled = yt.get_broadcasts(BroadcastTypes.SCHEDULED).copy()
-        live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
+            scheduled = yt.get_broadcasts(BroadcastTypes.SCHEDULED).copy()
+            live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
 
-        # Schedule broadcasts
-        if len(scheduled) < int(main_config["max_scheduled_broadcasts"]):
-            last_start_time = max(scheduled.keys())
-            last_broadcast = scheduled[last_start_time]
-            start_time = datetime.fromisoformat(
-                last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
-            yt.schedule_broadcast(start_time)
+            # Schedule broadcasts
+            if len(scheduled) < int(main_config["max_scheduled_broadcasts"]):
+                last_start_time = max(scheduled.keys())
+                last_broadcast = scheduled[last_start_time]
+                start_time = datetime.fromisoformat(
+                    last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
+                yt.schedule_broadcast(start_time)
 
-        # Start broadcasts
-        for start_time in scheduled.keys():
-            if start_time <= datetime.now(tz=TIMEZONE):
-                yt.start_broadcast(start_time)
+            # Start broadcasts
+            for start_time in scheduled.keys():
+                if start_time <= datetime.now(tz=TIMEZONE):
+                    yt.start_broadcast(start_time)
 
-        # Finish broadcasts
-        for start_time in live.keys():
-            end_time = datetime.fromisoformat(
-                live[start_time]["snippet"]["scheduledEndTime"].replace("Z",
-                                                                        "+00:00"))
-            if end_time <= datetime.now(tz=TIMEZONE):
-                yt.end_broadcast(start_time)
+            # Finish broadcasts
+            for start_time in live.keys():
+                end_time = datetime.fromisoformat(
+                    live[start_time]["snippet"]["scheduledEndTime"].replace("Z",
+                                                                            "+00:00"))
+                if end_time <= datetime.now(tz=TIMEZONE):
+                    yt.end_broadcast(start_time)
+
+    except Exception as error:
+        LOGGER.error("\n\n")
+        LOGGER.exception("There was an exception!!")
+        send_error_email(email_config, traceback.format_exc(), log_filename)
+        raise Exception from error
 
 
 if __name__ == "__main__":
 
     # Prepare the log
     Path("./logs").mkdir(parents=True, exist_ok=True)
-    log_filename = f"./logs/birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.log"
+    log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.log"
     logging.basicConfig(
         format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
         level=logging.DEBUG,
         handlers=[
-            logging.FileHandler(log_filename, mode="a")
+            logging.FileHandler(f"./logs/{log_filename}", mode="a")
         ])
     LOGGER = logging.getLogger(__name__)
 
