@@ -171,7 +171,7 @@ class YouTubeLivestream:
         LOGGER.info(locals())
 
         if duration_mins <= 0:
-            duration_mins = self.config["default_duration"]
+            duration_mins = int(self.config["default_duration"])
             LOGGER.debug("Using default duration of %d.", duration_mins)
 
         # Stop if a broadcast already exists at this time
