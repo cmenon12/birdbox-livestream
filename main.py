@@ -137,9 +137,9 @@ class YouTubeLivestream:
         ingestion_info = self.get_stream()['cdn']['ingestionInfo']
         return f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
 
-    def create_broadcast(self, start_time: datetime = datetime.now(tz=TIMEZONE),
-                         duration_mins: int = DEFAULT_DURATION):
-        """Creates the live broadcast.
+    def schedule_broadcast(self, start_time: datetime = datetime.now(tz=TIMEZONE),
+                           duration_mins: int = DEFAULT_DURATION):
+        """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
         :type start_time: datetime.datetime, optional
@@ -159,7 +159,7 @@ class YouTubeLivestream:
                                     hour=end_time.hour) + timedelta(
             hours=end_time.minute // 30)
 
-        # Create a new broadcast
+        # Schedule a new broadcast
         broadcast = self.service.liveBroadcasts().insert(
             part="id,snippet,contentDetails,status",
             body={
@@ -185,7 +185,7 @@ class YouTubeLivestream:
 
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
-        print(f"Created a broadcast at {start_time.isoformat()} till {end_time.isoformat()}")
+        print(f"Scheduled a broadcast at {start_time.isoformat()} till {end_time.isoformat()}")
         return broadcast
 
     def start_broadcast(self, start_time: datetime):
@@ -268,7 +268,7 @@ def main():
     print(f"\n{COMMAND} {url}\n")
     # subprocess.Popen(f"{COMMAND} {url}", shell=True)
 
-    # Create the first broadcast
+    # Schedule the first broadcast
     broadcast = yt.create_broadcast()
 
     while True:
@@ -276,12 +276,12 @@ def main():
         scheduled = yt.get_broadcasts(BroadcastTypes.SCHEDULED).copy()
         live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
 
-        # Create broadcasts
+        # Schedule broadcasts
         if len(scheduled) < MAX_SCHEDULED_BROADCASTS:
             last_start_time = max(scheduled.keys())
             last_broadcast = scheduled[last_start_time]
             start_time = datetime.fromisoformat(last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
-            yt.create_broadcast(start_time)
+            yt.schedule_broadcast(start_time)
 
         # Start broadcasts
         for start_time in scheduled.keys():
