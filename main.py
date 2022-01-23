@@ -307,6 +307,16 @@ class YouTubeLivestream:
         else:
             return {**self.scheduled_broadcasts, **self.live_broadcasts, **self.finished_broadcasts}
 
+    def get_stream_status(self) -> dict:
+
+        stream = self.service.liveStreams().list(
+            id=self.get_stream()["id"],
+            part="status"
+        ).execute()
+
+        LOGGER.debug("Stream status is: %s.", stream["items"][0]["status"])
+        return stream["items"][0]["status"]
+
 
 def send_error_email(config: configparser.SectionProxy, trace: str, log_filename: str):
     """Send an email about the error.
@@ -382,9 +392,18 @@ def main():
     try:
         yt = YouTubeLivestream(yt_config)
 
+        # Create the stream
         url = yt.get_stream_url()
         print(f"\n{main_config['command']} {url}\n")
-        # subprocess.Popen(f"{COMMAND} {url}", shell=True)
+
+        # Wait for the user to start streaming
+        LOGGER.debug("Waiting for the stream status to be active...")
+        stream_status = yt.get_stream_status()
+        while stream_status["streamStatus"] != "active":
+            print(f"Waiting because the stream status is: {stream_status}.")
+            time.sleep(5)
+            stream_status = yt.get_stream_status()
+        print(f"Stream status is: {stream_status}.")
 
         # Schedule the first broadcast
         yt.schedule_broadcast()
