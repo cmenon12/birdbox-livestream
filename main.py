@@ -1,8 +1,16 @@
+import configparser
+import email.utils
 import json
 import logging
 import os
 import pickle
+import re
+import smtplib
+import ssl
+import time
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from enum import Enum, auto
 from pathlib import Path
 
@@ -16,34 +24,20 @@ __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
+# The name of the config file
+CONFIG_FILENAME = "config.ini"
+
 # File with the OAuth client secret
 CLIENT_SECRET_FILE = "client_secret.json"
 
 # API-specific credentials
 SCOPES = ["https://www.googleapis.com/auth/youtube"]
-API_SERVICE_NAME = "youtube"
-API_VERSION = "v3"
 
 # File with the user's access and refresh tokens
 TOKEN_PICKLE_FILE = "token.pickle"
 
-# Must be public, unlisted, or private
-PRIVACY_STATUS = "unlisted"
-
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
-
-# The default duration in minutes
-DEFAULT_DURATION = 180
-
-# The max number of broadcasts to schedule in advance
-MAX_SCHEDULED_BROADCASTS = 3
-
-# The command to start streaming, just add the RTMP address on the end
-COMMAND = "raspivid -t 0 -w 1280 -h 720 -fps 25 -n -br 60 -co 10 -sh 70 -sa -100 -l -o - -a 1548 -ae 22 -ISO 600 -b " \
-          "2000000 | ffmpeg -re -ar 44100 -ac 2 -acodec pcm_s16le -f s16le -ac 2 -i /dev/zero -f h264 -i - -vcodec " \
-          "copy -acodec aac -ab 128k -g 50 -strict experimental -f flv -b:v 2000k -b:a 1k -maxrate 2000k -bufsize " \
-          "1000k -preset veryfast "
 
 
 class BroadcastTypes(Enum):
@@ -55,8 +49,10 @@ class BroadcastTypes(Enum):
 
 class YouTubeLivestream:
 
-    def __init__(self):
+    def __init__(self, config: configparser.SectionProxy):
         self.service = YouTubeLivestream.get_service()
+
+        self.config = config
 
         self.liveStream = None
         self.scheduled_broadcasts = {}
@@ -160,7 +156,7 @@ class YouTubeLivestream:
         return url
 
     def schedule_broadcast(self, start_time: datetime = datetime.now(tz=TIMEZONE),
-                           duration_mins: int = DEFAULT_DURATION):
+                           duration_mins: int = 0):
         """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
@@ -172,7 +168,11 @@ class YouTubeLivestream:
         """
 
         LOGGER.info("Scheduling the broadcast...")
-        LOGGER.debug(locals())
+        LOGGER.info(locals())
+
+        if duration_mins <= 0:
+            duration_mins = self.config["default_duration"]
+            LOGGER.debug("Using default duration of %d.", duration_mins)
 
         # Stop if a broadcast already exists at this time
         if start_time in self.get_broadcasts().keys():
@@ -195,7 +195,7 @@ class YouTubeLivestream:
             body={
                 "contentDetails": {
                     "enableAutoStart": True,
-                    "enableAutoStop": True,
+                    "enableAutoStop": False,
                     "enableClosedCaptions": False,
                     "enableDvr": True,
                     "enableEmbed": True,
@@ -208,7 +208,7 @@ class YouTubeLivestream:
                     "title": f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}"
                 },
                 "status": {
-                    "privacyStatus": PRIVACY_STATUS,
+                    "privacyStatus": self.config["privacy_status"],
                     "selfDeclaredMadeForKids": False
                 }
             }).execute()
@@ -231,7 +231,7 @@ class YouTubeLivestream:
         """
 
         LOGGER.info("Starting the broadcast...")
-        LOGGER.debug(locals())
+        LOGGER.info(locals())
 
         # Check that this broadcast exists.
         if start_time not in self.scheduled_broadcasts.keys():
@@ -264,7 +264,7 @@ class YouTubeLivestream:
         """
 
         LOGGER.info("Ending the broadcast...")
-        LOGGER.debug(locals())
+        LOGGER.info(locals())
 
         # Check that this broadcast exists
         if start_time not in self.live_broadcasts.keys():
@@ -306,14 +306,31 @@ class YouTubeLivestream:
 
 
 def main():
-    yt = YouTubeLivestream()
+    # Check that the config file exists
+    try:
+        open(CONFIG_FILENAME)
+        LOGGER.info("Loaded config %s.", CONFIG_FILENAME)
+    except FileNotFoundError as error:
+        print("The config file doesn't exist!")
+        LOGGER.info("Could not find config %s, exiting.", CONFIG_FILENAME)
+        time.sleep(5)
+        raise FileNotFoundError("The config file doesn't exist!") from error
+
+    # Fetch info from the config
+    parser = configparser.ConfigParser()
+    parser.read(CONFIG_FILENAME)
+    yt_config = parser["YouTubeLivestream"]
+    main_config = parser["main"]
+    email_config = parser["email"]
+
+    yt = YouTubeLivestream(yt_config)
 
     url = yt.get_stream_url()
-    print(f"\n{COMMAND} {url}\n")
+    print(f"\n{main_config['command']} {url}\n")
     # subprocess.Popen(f"{COMMAND} {url}", shell=True)
 
     # Schedule the first broadcast
-    broadcast = yt.schedule_broadcast()
+    yt.schedule_broadcast()
 
     while True:
 
@@ -321,10 +338,11 @@ def main():
         live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
 
         # Schedule broadcasts
-        if len(scheduled) < MAX_SCHEDULED_BROADCASTS:
+        if len(scheduled) < int(main_config["max_scheduled_broadcasts"]):
             last_start_time = max(scheduled.keys())
             last_broadcast = scheduled[last_start_time]
-            start_time = datetime.fromisoformat(last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
+            start_time = datetime.fromisoformat(
+                last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
             yt.schedule_broadcast(start_time)
 
         # Start broadcasts
