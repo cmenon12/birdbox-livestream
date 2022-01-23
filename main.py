@@ -1,7 +1,10 @@
+import json
+import logging
 import os
 import pickle
 from datetime import datetime, timedelta
 from enum import Enum, auto
+from pathlib import Path
 
 import googleapiclient
 from google.auth.transport.requests import Request
@@ -68,18 +71,24 @@ class YouTubeLivestream:
         :rtype: googleapiclient.discovery.Resource
         """
 
+        LOGGER.info("Authorising service...")
+
         credentials = None
 
         # Attempt to access pre-existing credentials
         if os.path.exists(TOKEN_PICKLE_FILE):
             with open(TOKEN_PICKLE_FILE, "rb") as token:
+                LOGGER.debug("Loading credentials from %s.", TOKEN_PICKLE_FILE)
                 credentials = pickle.load(token)
 
         # If there are no (valid) credentials available let the user log in
+        LOGGER.debug("Credentials are: %s." % str(credentials))
         if not credentials or not credentials.valid:
             if credentials and credentials.expired and credentials.refresh_token:
+                LOGGER.debug("Credentials exist but have expired, refreshing...")
                 credentials.refresh(Request())
             else:
+                LOGGER.debug("Re-authorising credentials.")
                 flow = InstalledAppFlow.from_client_secrets_file(
                     CLIENT_SECRET_FILE, SCOPES)
                 credentials = flow.run_local_server(port=0)
@@ -93,6 +102,7 @@ class YouTubeLivestream:
 
         assert os.path.exists(TOKEN_PICKLE_FILE)
 
+        LOGGER.info("Service authorised successfully!\n")
         return service
 
     def get_stream(self) -> dict:
@@ -102,11 +112,16 @@ class YouTubeLivestream:
         :rtype: dict
         """
 
+        LOGGER.info("Getting the livestream...")
+
         # Return the existing stream
         if self.liveStream is not None:
+            LOGGER.debug("Returning existing livestream.")
+            LOGGER.info("Livestream fetched and returned successfully!\n")
             return self.liveStream
 
         # Create a new livestream
+        LOGGER.debug("Creating a new stream...")
         stream = self.service.liveStreams().insert(
             part="snippet,cdn,contentDetails,id,status",
             body={
@@ -122,9 +137,11 @@ class YouTubeLivestream:
                     "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).isoformat()}"
                 }
             }).execute()
+        LOGGER.debug("Stream is: %s.", json.dumps(stream, indent=4))
 
         # Save and return it
         self.liveStream = stream
+        LOGGER.info("Livestream fetched and returned successfully!\n")
         return stream
 
     def get_stream_url(self) -> str:
@@ -134,8 +151,13 @@ class YouTubeLivestream:
         :rtype: str
         """
 
+        LOGGER.info("Getting the livestream URL...")
+
         ingestion_info = self.get_stream()['cdn']['ingestionInfo']
-        return f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
+        url = f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
+        LOGGER.debug("Livestream URL is %s.", url)
+        LOGGER.info("Livestream URL fetched and returned successfully!\n")
+        return url
 
     def schedule_broadcast(self, start_time: datetime = datetime.now(tz=TIMEZONE),
                            duration_mins: int = DEFAULT_DURATION):
@@ -149,17 +171,25 @@ class YouTubeLivestream:
         :rtype: dict
         """
 
+        LOGGER.info("Scheduling the broadcast...")
+        LOGGER.debug(locals())
+
         # Stop if a broadcast already exists at this time
         if start_time in self.get_broadcasts().keys():
+            LOGGER.debug("Returning existing broadcast at %s.", start_time.isoformat())
+            LOGGER.info("Broadcast scheduled successfully!\n")
             return self.get_broadcasts()[start_time]
 
         # Round the end time to the nearest hour
         end_time = start_time + timedelta(minutes=duration_mins)
+        LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
         end_time = end_time.replace(second=0, microsecond=0, minute=0,
                                     hour=end_time.hour) + timedelta(
             hours=end_time.minute // 30)
+        LOGGER.debug("End time to the nearest hour is %s.", end_time.isoformat())
 
         # Schedule a new broadcast
+        LOGGER.debug("Scheduling a new broadcast...")
         broadcast = self.service.liveBroadcasts().insert(
             part="id,snippet,contentDetails,status",
             body={
@@ -182,10 +212,12 @@ class YouTubeLivestream:
                     "selfDeclaredMadeForKids": False
                 }
             }).execute()
+        LOGGER.debug("Broadcast is: %s.", json.dumps(broadcast, indent=4))
 
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
         print(f"Scheduled a broadcast at {start_time.isoformat()} till {end_time.isoformat()}")
+        LOGGER.info("Broadcast scheduled successfully!\n")
         return broadcast
 
     def start_broadcast(self, start_time: datetime):
@@ -198,21 +230,27 @@ class YouTubeLivestream:
         :raises ValueError: if the broadcast at that times doesn't exist
         """
 
+        LOGGER.info("Starting the broadcast...")
+        LOGGER.debug(locals())
+
         # Check that this broadcast exists.
         if start_time not in self.scheduled_broadcasts.keys():
             raise ValueError(f"The broadcast at {start_time.isoformat()} is not scheduled!")
 
         # Bind the broadcast to the stream
+        LOGGER.debug("Binding the broadcast to the stream...")
         broadcast = self.service.liveBroadcasts().bind(
             id=self.scheduled_broadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status",
             streamId=self.get_stream()["id"]
         ).execute()
+        LOGGER.debug("Broadcast is: %s.", json.dumps(broadcast, indent=4))
 
         # Save and return it
         self.live_broadcasts[start_time] = broadcast
         self.scheduled_broadcasts.pop(start_time)
         print(f"Started a broadcast at {start_time.isoformat()}")
+        LOGGER.info("Broadcast started successfully!\n")
         return broadcast
 
     def end_broadcast(self, start_time: datetime):
@@ -225,21 +263,27 @@ class YouTubeLivestream:
         :raises ValueError: if the broadcast at that times doesn't exist
         """
 
+        LOGGER.info("Ending the broadcast...")
+        LOGGER.debug(locals())
+
         # Check that this broadcast exists
         if start_time not in self.live_broadcasts.keys():
             raise ValueError(f"The broadcast at {start_time.isoformat()} is not live!")
 
         # Change its status to complete
+        LOGGER.debug("Transitioning the broadcastStatus to complete...")
         broadcast = self.service.liveBroadcasts().transition(
             broadcastStatus="complete",
             id=self.live_broadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status"
         ).execute()
+        LOGGER.debug("Broadcast is: %s.", broadcast)
 
         # Save and return the updated resource
         self.finished_broadcasts[start_time] = broadcast
         self.live_broadcasts.pop(start_time)
         print(f"Ended a broadcast that started at {start_time.isoformat()}")
+        LOGGER.info("Broadcast ended successfully!\n")
         return broadcast
 
     def get_broadcasts(self, category: BroadcastTypes = None) -> dict:
@@ -269,7 +313,7 @@ def main():
     # subprocess.Popen(f"{COMMAND} {url}", shell=True)
 
     # Schedule the first broadcast
-    broadcast = yt.create_broadcast()
+    broadcast = yt.schedule_broadcast()
 
     while True:
 
@@ -298,4 +342,20 @@ def main():
 
 
 if __name__ == "__main__":
+
+    # Prepare the log
+    Path("./logs").mkdir(parents=True, exist_ok=True)
+    log_filename = f"./logs/birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.log"
+    logging.basicConfig(
+        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
+        level=logging.DEBUG,
+        handlers=[
+            logging.FileHandler(log_filename, mode="a")
+        ])
+    LOGGER = logging.getLogger(__name__)
+
+    # Run it
     main()
+
+else:
+    LOGGER = logging.getLogger(__name__)

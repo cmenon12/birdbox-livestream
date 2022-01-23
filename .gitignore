@@ -131,3 +131,6 @@ dmypy.json
 # Project-specific
 client_secret.json
 token.pickle
+
+# Logs
+/logs
