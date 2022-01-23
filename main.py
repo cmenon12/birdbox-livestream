@@ -136,7 +136,7 @@ class YouTubeLivestream:
                     "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).isoformat()}"
                 }
             }).execute()
-        LOGGER.debug("Stream is: %s.", json.dumps(stream, indent=4))
+        LOGGER.debug("Stream is: \n%s.", json.dumps(stream, indent=4))
 
         # Save and return it
         self.liveStream = stream
@@ -191,31 +191,37 @@ class YouTubeLivestream:
             hours=end_time.minute // 30)
         LOGGER.debug("End time to the nearest hour is %s.", end_time.isoformat())
 
+        # Create a description
+        description = f"Watch the livestream of the birdbox starting on {start_time.strftime('%a %d %b at %H:%M')} and ending at {end_time.strftime('%H:%M')} ({str(TIMEZONE.zone)} timezone)."
+
         # Schedule a new broadcast
         LOGGER.debug("Scheduling a new broadcast...")
         broadcast = self.service.liveBroadcasts().insert(
             part="id,snippet,contentDetails,status",
             body={
                 "contentDetails": {
-                    "enableAutoStart": True,
+                    "enableAutoStart": False,
                     "enableAutoStop": False,
                     "enableClosedCaptions": False,
                     "enableDvr": True,
-                    "enableEmbed": True,
                     "recordFromStart": True,
-                    "startWithSlate": False
+                    "startWithSlate": False,
+                    "monitorStream": {
+                        "enableMonitorStream": False
+                    }
                 },
                 "snippet": {
                     "scheduledStartTime": start_time.isoformat(),
                     "scheduledEndTime": end_time.isoformat(),
-                    "title": f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}"
+                    "title": f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}",
+                    "description": description
                 },
                 "status": {
                     "privacyStatus": self.config["privacy_status"],
                     "selfDeclaredMadeForKids": False
                 }
             }).execute()
-        LOGGER.debug("Broadcast is: %s.", json.dumps(broadcast, indent=4))
+        LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
@@ -247,7 +253,35 @@ class YouTubeLivestream:
             part="id,snippet,contentDetails,status",
             streamId=self.get_stream()["id"]
         ).execute()
-        LOGGER.debug("Broadcast is: %s.", json.dumps(broadcast, indent=4))
+        LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
+
+        max = 60
+        counter = 0
+        LOGGER.debug("Waiting for the stream status to be active...")
+        stream_status = self.get_stream_status()
+        while stream_status["streamStatus"] != "active" and counter < 5:
+            counter += 1
+            time.sleep(5)
+            stream_status = self.get_stream_status()
+        if counter == max:
+            raise TimeoutError(f"Stream status still isn't active after {round(max * (5 / 60), 2)} minutes!")
+
+        # # Get the broadcast
+        # LOGGER.debug("Getting the broadcast...")
+        # broadcast_temp = self.service.liveBroadcasts().list(
+        #     id=broadcast["id"],
+        #     part="id,snippet,contentDetails,status"
+        # ).execute()
+        # LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast_temp, indent=4))
+
+        # Change its status to live
+        LOGGER.debug("Transitioning the broadcastStatus to live...")
+        broadcast = self.service.liveBroadcasts().transition(
+            broadcastStatus="live",
+            id=broadcast["id"],
+            part="id,snippet,contentDetails,status"
+        ).execute()
+        LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         # Save and return it
         self.live_broadcasts[start_time] = broadcast
@@ -280,7 +314,7 @@ class YouTubeLivestream:
             id=self.live_broadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status"
         ).execute()
-        LOGGER.debug("Broadcast is: %s.", broadcast)
+        LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         # Save and return the updated resource
         self.finished_broadcasts[start_time] = broadcast
@@ -347,7 +381,7 @@ def send_error_email(config: configparser.SectionProxy, trace: str, log_filename
            f"https://github.com/cmenon12/birdbox-livestream). "
     message.attach(MIMEText(text, "plain"))
 
-    LOGGER.debug("Message is %s.", message)
+    LOGGER.debug("Message is: \n%s.", message)
 
     # Attach the log
     part = MIMEBase("text", "plain")
