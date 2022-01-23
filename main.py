@@ -468,6 +468,8 @@ def main():
                 if end_time <= datetime.now(tz=TIMEZONE):
                     yt.end_broadcast(start_time)
 
+            time.sleep(10)
+
     except Exception as error:
         LOGGER.error("\n\n")
         LOGGER.exception("There was an exception!!")
