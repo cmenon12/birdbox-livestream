@@ -455,10 +455,14 @@ def main():
                     last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
                 yt.schedule_broadcast(start_time)
 
+            time.sleep(5)
+
             # Start broadcasts
             for start_time in scheduled.keys():
                 if start_time <= datetime.now(tz=TIMEZONE):
                     yt.start_broadcast(start_time)
+
+            time.sleep(5)
 
             # Finish broadcasts
             for start_time in live.keys():
@@ -468,7 +472,7 @@ def main():
                 if end_time <= datetime.now(tz=TIMEZONE):
                     yt.end_broadcast(start_time)
 
-            time.sleep(10)
+            time.sleep(5)
 
     except Exception as error:
         LOGGER.error("\n\n")
@@ -481,7 +485,7 @@ if __name__ == "__main__":
 
     # Prepare the log
     Path("./logs").mkdir(parents=True, exist_ok=True)
-    log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.log"
+    log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
     logging.basicConfig(
         format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
         level=logging.DEBUG,
