@@ -1,3 +1,12 @@
+"""Livestream a RTMP stream of a birdbox on YouTube indefinitely.
+
+This script manages the indefinite streaming of a RTMP video stream on
+YouTube. It creates one liveStream and multiple consecutive
+liveBroadcasts of a pre-defined length, and manages the starting and
+stopping of each liveBroadcast. A pre-defined number of liveBroadcasts
+are created in advance before being started and stopped on schedule.
+"""
+
 import ast
 import configparser
 import email.utils
@@ -45,6 +54,8 @@ TIMEZONE = timezone("Europe/London")
 
 
 class BroadcastTypes(Enum):
+    """The possible types for a broadcast, including an 'all' type."""
+
     SCHEDULED = auto()
     LIVE = auto()
     FINISHED = auto()
@@ -52,13 +63,18 @@ class BroadcastTypes(Enum):
 
 
 class YouTubeLivestream:
+    """Represents a single continuous YouTube livestream.
+
+    :param config: the config to use
+    :type config: configparser.SectionProxy
+    """
 
     def __init__(self, config: configparser.SectionProxy):
         self.service = YouTubeLivestream.get_service()
 
         self.config = config
 
-        self.liveStream = None
+        self.live_stream = None
         self.scheduled_broadcasts = {}
         self.finished_broadcasts = {}
         self.live_broadcasts = {}
@@ -82,7 +98,7 @@ class YouTubeLivestream:
                 credentials = pickle.load(token)
 
         # If there are no (valid) credentials available let the user log in
-        LOGGER.debug("Credentials are: %s." % str(credentials))
+        LOGGER.debug("Credentials are: %s.", str(credentials))
         if not credentials or not credentials.valid:
             if credentials and credentials.expired and credentials.refresh_token:
                 LOGGER.debug("Credentials exist but have expired, refreshing...")
@@ -106,7 +122,7 @@ class YouTubeLivestream:
         return service
 
     def get_stream(self) -> dict:
-        """Gets the liveStream, creating it if needed.
+        """Gets the live_stream, creating it if needed.
 
         :return: the YouTube liveStream resource
         :rtype: dict
@@ -115,10 +131,10 @@ class YouTubeLivestream:
         LOGGER.info("Getting the livestream...")
 
         # Return the existing stream
-        if self.liveStream is not None:
+        if self.live_stream is not None:
             LOGGER.debug("Returning existing livestream.")
             LOGGER.info("Livestream fetched and returned successfully!\n")
-            return self.liveStream
+            return self.live_stream
 
         # Create a new livestream
         LOGGER.debug("Creating a new stream...")
@@ -140,7 +156,7 @@ class YouTubeLivestream:
         LOGGER.debug("Stream is: \n%s.", json.dumps(stream, indent=4))
 
         # Save and return it
-        self.liveStream = stream
+        self.live_stream = stream
         LOGGER.info("Livestream fetched and returned successfully!\n")
         return stream
 
@@ -160,7 +176,7 @@ class YouTubeLivestream:
         return url
 
     def schedule_broadcast(self, start_time: datetime = datetime.now(tz=TIMEZONE),
-                           duration_mins: int = 0):
+                           duration_mins: int = 0) -> dict:
         """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
@@ -193,7 +209,8 @@ class YouTubeLivestream:
         LOGGER.debug("End time to the nearest hour is %s.", end_time.isoformat())
 
         # Create a description
-        description = f"Watch the livestream of the birdbox starting on {start_time.strftime('%a %d %b at %H:%M')} and ending at {end_time.strftime('%H:%M')} ({str(TIMEZONE.zone)} timezone)."
+        description = f"Watch the livestream of the birdbox starting on {start_time.strftime('%a %d %b at %H:%M')}" \
+                      f" and ending at {end_time.strftime('%H:%M')} ({str(TIMEZONE.zone)} timezone). "
 
         # Schedule a new broadcast
         LOGGER.debug("Scheduling a new broadcast...")
@@ -230,7 +247,7 @@ class YouTubeLivestream:
         LOGGER.info("Broadcast scheduled successfully!\n")
         return broadcast
 
-    def start_broadcast(self, start_time: datetime):
+    def start_broadcast(self, start_time: datetime) -> dict:
         """Start the broadcast by binding the stream to it.
 
         :param start_time: when the broadcast should start
@@ -244,7 +261,7 @@ class YouTubeLivestream:
         LOGGER.info(locals())
 
         # Check that this broadcast exists.
-        if start_time not in self.scheduled_broadcasts.keys():
+        if start_time not in self.scheduled_broadcasts:
             raise ValueError(f"The broadcast at {start_time.isoformat()} is not scheduled!")
 
         # Bind the broadcast to the stream
@@ -256,7 +273,7 @@ class YouTubeLivestream:
         ).execute()
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
-        max = 60
+        limit = 60
         counter = 0
         LOGGER.debug("Waiting for the stream status to be active...")
         stream_status = self.get_stream_status()
@@ -264,8 +281,8 @@ class YouTubeLivestream:
             counter += 1
             time.sleep(5)
             stream_status = self.get_stream_status()
-        if counter == max:
-            raise TimeoutError(f"Stream status still isn't active after {round(max * (5 / 60), 2)} minutes!")
+        if counter == limit:
+            raise TimeoutError(f"Stream status still isn't active after {round(limit * (5 / 60), 2)} minutes!")
 
         # # Get the broadcast
         # LOGGER.debug("Getting the broadcast...")
@@ -298,7 +315,7 @@ class YouTubeLivestream:
         LOGGER.info("Broadcast started successfully!\n")
         return broadcast
 
-    def end_broadcast(self, start_time: datetime):
+    def end_broadcast(self, start_time: datetime) -> dict:
         """End the broadcast by changing it's state to complete.
 
         :param start_time: when the broadcast should start
@@ -312,7 +329,7 @@ class YouTubeLivestream:
         LOGGER.info(locals())
 
         # Check that this broadcast exists
-        if start_time not in self.live_broadcasts.keys():
+        if start_time not in self.live_broadcasts:
             raise ValueError(f"The broadcast at {start_time.isoformat()} is not live!")
 
         # Change its status to complete
@@ -349,14 +366,18 @@ class YouTubeLivestream:
 
         if category == BroadcastTypes.SCHEDULED:
             return self.scheduled_broadcasts
-        elif category == BroadcastTypes.LIVE:
+        if category == BroadcastTypes.LIVE:
             return self.live_broadcasts
-        elif category == BroadcastTypes.FINISHED:
+        if category == BroadcastTypes.FINISHED:
             return self.finished_broadcasts
-        else:
-            return {**self.scheduled_broadcasts, **self.live_broadcasts, **self.finished_broadcasts}
+        return {**self.scheduled_broadcasts, **self.live_broadcasts, **self.finished_broadcasts}
 
     def get_stream_status(self) -> dict:
+        """Fetch and return the status of the livestream.
+
+        :return: the status of the livestream.
+        :rtype: dict
+        """
 
         stream = self.service.liveStreams().list(
             id=self.get_stream()["id"],
@@ -367,15 +388,16 @@ class YouTubeLivestream:
         return stream["items"][0]["status"]
 
 
-def send_error_email(config: configparser.SectionProxy, trace: str, log_filename: str):
+def send_error_email(config: configparser.SectionProxy, trace: str,
+                     filename: str) -> None:
     """Send an email about the error.
 
     :param config: the config for the email
     :type config: configparser.SectionProxy
     :param trace: the stack trace of the exception
     :type trace: str
-    :param log_filename: the filename of the log file
-    :type log_filename: str
+    :param filename: the filename of the log file to attach
+    :type filename: str
     :return:
     """
 
@@ -400,12 +422,12 @@ def send_error_email(config: configparser.SectionProxy, trace: str, log_filename
 
     # Attach the log
     part = MIMEBase("text", "plain")
-    part.set_payload(open(f"./logs/{log_filename}", "r").read())
+    part.set_payload(open(f"./logs/{filename}", "r").read())
     encoders.encode_base64(part)
     part.add_header("Content-Disposition",
-                    f"attachment; filename=\"{log_filename}\"")
+                    f"attachment; filename=\"{filename}\"")
     part.add_header("Content-Description",
-                    f"{log_filename}")
+                    f"{filename}")
     message.attach(part)
 
     # Create the SMTP connection and send the email
@@ -421,6 +443,8 @@ def send_error_email(config: configparser.SectionProxy, trace: str, log_filename
 
 
 def main():
+    """Runs the livestream script indefinitely."""
+
     # Check that the config file exists
     try:
         open(CONFIG_FILENAME)
