@@ -1,3 +1,4 @@
+import ast
 import configparser
 import email.utils
 import json
@@ -276,12 +277,19 @@ class YouTubeLivestream:
 
         # Change its status to live
         LOGGER.debug("Transitioning the broadcastStatus to live...")
-        broadcast = self.service.liveBroadcasts().transition(
-            broadcastStatus="live",
-            id=broadcast["id"],
-            part="id,snippet,contentDetails,status"
-        ).execute()
-        LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
+        try:
+            broadcast = self.service.liveBroadcasts().transition(
+                broadcastStatus="live",
+                id=broadcast["id"],
+                part="id,snippet,contentDetails,status"
+            ).execute()
+            LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
+        except googleapiclient.errors.HttpError as error:
+            content = ast.literal_eval(error.content.decode("utf-8"))
+            if content["error"]["message"] == "Redundant transition":
+                LOGGER.debug("Got a redundant transition error, continuing.")
+            else:
+                raise googleapiclient.errors.HttpError(resp=error.resp, content=error.content) from error
 
         # Save and return it
         self.live_broadcasts[start_time] = broadcast
@@ -309,19 +317,26 @@ class YouTubeLivestream:
 
         # Change its status to complete
         LOGGER.debug("Transitioning the broadcastStatus to complete...")
-        broadcast = self.service.liveBroadcasts().transition(
-            broadcastStatus="complete",
-            id=self.live_broadcasts[start_time]["id"],
-            part="id,snippet,contentDetails,status"
-        ).execute()
-        LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
+        try:
+            broadcast = self.service.liveBroadcasts().transition(
+                broadcastStatus="complete",
+                id=self.live_broadcasts[start_time]["id"],
+                part="id,snippet,contentDetails,status"
+            ).execute()
+            LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
+            self.finished_broadcasts[start_time] = broadcast
+        except googleapiclient.errors.HttpError as error:
+            content = ast.literal_eval(error.content.decode("utf-8"))
+            if content["error"]["message"] == "Redundant transition":
+                LOGGER.debug("Got a redundant transition error, continuing.")
+            else:
+                raise googleapiclient.errors.HttpError(resp=error.resp, content=error.content) from error
 
         # Save and return the updated resource
-        self.finished_broadcasts[start_time] = broadcast
         self.live_broadcasts.pop(start_time)
         print(f"Ended a broadcast that started at {start_time.isoformat()}")
         LOGGER.info("Broadcast ended successfully!\n")
-        return broadcast
+        return self.finished_broadcasts[start_time]
 
     def get_broadcasts(self, category: BroadcastTypes = None) -> dict:
         """Returns a dict with the broadcasts
