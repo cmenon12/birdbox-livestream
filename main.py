@@ -518,9 +518,13 @@ def main():
 
             # If the time is divisible by 5, log the status
             if datetime.now(tz=TIMEZONE).minute % 5 == 0:
-                stream_status = yt.get_stream_status()
-                LOGGER.debug("Stream status is: %s.", str(stream_status))
-                time.sleep(60)
+                try:
+                    yt.get_stream_status()
+                    time.sleep(60)
+                except Exception as error:
+                    LOGGER.error("\n\n")
+                    LOGGER.exception("There was an exception logging the stream status, but we'll carry on anyway.")
+                    time.sleep(30)
 
     except Exception as error:
         LOGGER.error("\n\n")
