@@ -1,0 +1,25 @@
+<html lang="en-GB">
+<head>
+    <title>{{title}} - birdbox-livestream</title>
+    <link href="{{ url_for('static', filename='favicon.ico') }}" rel="shortcut icon">
+    <script src="https://apis.google.com/js/platform.js"></script>
+    <meta content="AovZRK3VMddnigaixuHsqJaHNjwWJQLZ7WCZfAVMh44" name="google-site-verification"/>
+</head>
+<body>
+<h1>{{title}} for birdbox-livestream (Christopher Menon)</h1>
+<hr>
+<ul>
+    <li><a href="/">Home</a></li>
+    <li><a href="/privacy">Privacy Policy</a></li>
+    <li><a href="/terms">Terms and Conditions</a></li>
+</ul>
+<hr>
+{% block content %}
+<div class="g-ytsubscribe" data-channelid="UCikUXkTwFvyrHlajBRQwvuw" data-count="hidden" data-layout="full"></div>
+{% endblock %}
+<hr>
+<p>Find out more about this project at <a href="https://github.com/cmenon12/birdbox-livestream/">https://github.com/cmenon12/birdbox-livestream/</a>.
+</p>
+
+</body>
+</html>
