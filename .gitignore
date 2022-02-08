@@ -133,3 +133,4 @@ client_secret.json
 token.pickle
 /logs
 config.ini
+/.idea
