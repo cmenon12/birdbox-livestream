@@ -26,8 +26,11 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum, auto
 from pathlib import Path
+from typing import Optional, Union
 
 import googleapiclient
+from func_timeout import func_set_timeout, FunctionTimedOut
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -39,6 +42,9 @@ __license__ = "gpl-3.0"
 
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
+
+# How long to wait for authorization (in seconds)
+AUTHORIZATION_TIMEOUT = 300
 
 # File with the OAuth client secret
 CLIENT_SECRET_FILE = "client_secret.json"
@@ -80,7 +86,7 @@ class YouTubeLivestream:
         self.live_broadcasts = {}
 
     @staticmethod
-    def get_service() -> googleapiclient.discovery.Resource:
+    def get_service(open_browser: Optional[Union[bool, str]] = False) -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
 
         :return: the YouTube API service (a Resource)
@@ -88,6 +94,30 @@ class YouTubeLivestream:
         """
 
         LOGGER.info("Authorising service...")
+
+        @func_set_timeout(AUTHORIZATION_TIMEOUT)
+        def authorize_in_browser():
+            """Authorize in the browser, with a timeout."""
+
+            if open_browser is False:
+                # Tell the user to go and authorize it themselves
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    CLIENT_SECRET_FILE, SCOPES,
+                    redirect_uri="urn:ietf:wg:oauth:2.0:oob")
+                auth_url, _ = flow.authorization_url(prompt="consent")
+                print(f"Please visit this URL to authorize this application: {auth_url}")
+                print("The URL has been copied to the clipboard.")
+
+                # Get the authorization code
+                code = input("Enter the authorization code: ")
+                flow.fetch_token(code=code)
+                return flow.credentials
+
+            # Else open the browser for the user to authorize it
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CLIENT_SECRET_FILE, SCOPES)
+            print("Your browser should open automatically.")
+            return flow.run_local_server(port=0)
 
         credentials = None
 
@@ -100,18 +130,34 @@ class YouTubeLivestream:
         # If there are no (valid) credentials available let the user log in
         LOGGER.debug("Credentials are: %s.", str(credentials))
         if not credentials or not credentials.valid:
-            if credentials and credentials.expired and credentials.refresh_token:
-                LOGGER.debug("Credentials exist but have expired, refreshing...")
-                credentials.refresh(Request())
-            else:
-                LOGGER.debug("Re-authorising credentials.")
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRET_FILE, SCOPES)
-                credentials = flow.run_local_server(port=0)
+            LOGGER.debug("There are no credentials or they are invalid.")
+            if credentials and credentials.refresh_token:
+                try:
+                    credentials.refresh(Request())
+                except RefreshError:
+                    os.remove(TOKEN_PICKLE_FILE)
 
-            # Save the credentials for the next run
-            with open(TOKEN_PICKLE_FILE, "wb") as token:
-                pickle.dump(credentials, token)
+                    try:
+                        credentials = authorize_in_browser()
+                    except FunctionTimedOut as error:
+                        raise FunctionTimedOut(
+                            f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
+            else:
+                try:
+                    credentials = authorize_in_browser()
+                except FunctionTimedOut as error:
+                    raise FunctionTimedOut(
+                        f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
+
+        # If we do have valid credentials then refresh them
+        else:
+            credentials.refresh(Request())
+
+        # Save the credentials for the next run
+        with open(TOKEN_PICKLE_FILE, "wb") as token:
+            pickle.dump(credentials, token)
+        LOGGER.debug("Credentials saved to %s successfully.",
+                     TOKEN_PICKLE_FILE)
 
         # Create and return the authenticated service
         service = build("youtube", "v3", credentials=credentials)
