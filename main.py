@@ -346,6 +346,7 @@ class YouTubeLivestream:
             content = ast.literal_eval(error.content.decode("utf-8"))
             if content["error"]["message"] == "Redundant transition":
                 LOGGER.debug("Got a redundant transition error, continuing.")
+                self.finished_broadcasts[start_time] = self.live_broadcasts[start_time]
             else:
                 raise googleapiclient.errors.HttpError(resp=error.resp, content=error.content) from error
 
@@ -467,7 +468,9 @@ def main():
 
         # Create the stream
         url = yt.get_stream_url()
-        print(f"\n{main_config['command']} {url}\n")
+        print(f"\n{url}\n")
+        # print(f"\n{main_config['command']} {url}\n")
+        # subprocess.Popen(["./stream.sh", url])
 
         # Wait for the user to start streaming
         LOGGER.debug("Waiting for the stream status to be active...")
@@ -512,6 +515,16 @@ def main():
                     yt.end_broadcast(start_time)
 
             time.sleep(5)
+
+            # If the time is divisible by 5, log the status
+            if datetime.now(tz=TIMEZONE).minute % 5 == 0:
+                try:
+                    yt.get_stream_status()
+                    time.sleep(60)
+                except Exception as error:
+                    LOGGER.error("\n\n")
+                    LOGGER.exception("There was an exception logging the stream status, but we'll carry on anyway.")
+                    time.sleep(30)
 
     except Exception as error:
         LOGGER.error("\n\n")
