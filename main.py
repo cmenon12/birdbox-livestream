@@ -81,6 +81,7 @@ class YouTubeLivestream:
         self.config = config
 
         self.live_stream = None
+        self.week_playlist = None
         self.scheduled_broadcasts = {}
         self.finished_broadcasts = {}
         self.live_broadcasts = {}
@@ -287,6 +288,9 @@ class YouTubeLivestream:
             }).execute()
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
+        # Add it to the playlist
+        self.add_to_week_playlist(broadcast["id"], start_time)
+
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
         print(f"Scheduled a broadcast at {start_time.isoformat()} till {end_time.isoformat()}")
@@ -467,6 +471,73 @@ class YouTubeLivestream:
         LOGGER.info("Video description updated successfully!")
         return video
 
+    def add_to_week_playlist(self, video_id: str, start_time: datetime) -> None:
+        """Add the video to the playlist for the week.
+
+        :param video_id: the id of the video to add
+        :type video_id: str
+        :param start_time: the start time of the video
+        :type start_time: datetime.datetime
+        """
+
+        LOGGER.info("Adding the video to the week's playlist...")
+        LOGGER.info(locals())
+
+        # Calculate the title
+        playlist_title = (start_time - timedelta(days=start_time.weekday())).strftime("W%W: w/c %d %b")
+
+        # Only get the playlist for this week if we don't already have it
+        if self.week_playlist is None or self.week_playlist["snippet"]["title"] != playlist_title:
+
+            # Get all the playlists
+            # TODO: implement paging
+            LOGGER.debug("Fetching all the playlists...")
+            all_playlists = []
+            response = self.service.playlists().list(
+                part="id,snippet",
+                mine=True,
+                maxResults=50
+            ).execute()
+            LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
+            all_playlists.extend(response["items"])
+            LOGGER.debug("Playlists is: \n%s.", json.dumps(all_playlists, indent=4))
+
+            # Try & find this week's playlist
+            for item in all_playlists:
+                if item["snippet"]["title"] == playlist_title:
+                    LOGGER.debug("Using playlist %s.", item)
+                    self.week_playlist = item
+                    break
+            else:
+                # Create a new playlist
+                LOGGER.debug("Creating a new playlist...")
+                description = f"This playlist has videos of the birdbox from {(start_time - timedelta(days=start_time.weekday())).strftime('%a %d %B')} to {(start_time - timedelta(days=start_time.weekday() - 6)).strftime('%a %d %B')}. "
+                self.week_playlist = self.service.playlists().insert(
+                    part="id,snippet,status",
+                    body={
+                        "snippet": {
+                            "title": playlist_title,
+                            "description": description
+                        },
+                        "status": {
+                            "privacyStatus": self.config["privacy_status"]
+                        }
+                    }
+                ).execute()
+                LOGGER.debug("Playlist is: \n%s.", json.dumps(self.week_playlist, indent=4))
+
+        # Add the video to the playlist
+        playlist_item = self.service.playlistItems().insert(
+            part="id,snippet",
+            body={
+                "snippet": {
+                    "playlistId": self.week_playlist["id"],
+                    "resourceId": video_id
+                }
+            }
+        ).execute()
+        LOGGER.debug("Playlist Item is: \n%s.", json.dumps(playlist_item, indent=4))
+
 
 def send_error_email(config: configparser.SectionProxy, trace: str,
                      filename: str) -> None:
@@ -570,7 +641,10 @@ def main():
 
             # Schedule broadcasts
             if len(scheduled) < int(main_config["max_scheduled_broadcasts"]):
-                last_start_time = max(scheduled.keys())
+                if len(scheduled) != 0:
+                    last_start_time = max(scheduled.keys())
+                else:
+                    last_start_time = max(live.keys())
                 last_broadcast = scheduled[last_start_time]
                 start_time = datetime.fromisoformat(
                     last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
