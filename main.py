@@ -434,6 +434,39 @@ class YouTubeLivestream:
         LOGGER.debug("Stream status is: %s.", stream["items"][0]["status"])
         return stream["items"][0]["status"]
 
+    def update_video_description(self, video_id: str, description: str) -> dict:
+        """Update the description of the video.
+
+        :param video_id: the ID of the video
+        :type video_id: str
+        :param description: the new description
+        :type id: str
+        :return: the updated video resource
+        :rtype: dict
+        """
+
+        LOGGER.info("Updating the video description...")
+        LOGGER.info(locals())
+
+        # Get the existing snippet details
+        video = self.service.videos().list(
+            id=video_id,
+            part="id,snippet"
+        ).execute()
+        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+
+        # Update it
+        LOGGER.debug("Updating the video description...")
+        video = self.service.videos().update(
+            id=video_id,
+            part="id,snippet",
+            streamId=self.get_stream()["id"]
+        ).execute()
+        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+
+        LOGGER.info("Video description updated successfully!")
+        return video
+
 
 def send_error_email(config: configparser.SectionProxy, trace: str,
                      filename: str) -> None:
