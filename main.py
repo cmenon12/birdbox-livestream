@@ -532,7 +532,10 @@ class YouTubeLivestream:
             body={
                 "snippet": {
                     "playlistId": self.week_playlist["id"],
-                    "resourceId": video_id
+                    "resourceId": {
+                        "videoId": video_id,
+                        "kind": "youtube#video"
+                    }
                 }
             }
         ).execute()
