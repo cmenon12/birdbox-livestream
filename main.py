@@ -481,7 +481,6 @@ class YouTubeLivestream:
         # Update it
         LOGGER.debug("Updating the video metadata...")
         video = self.service.videos().update(
-            id=video_id,
             part="id,snippet",
             body=body
         ).execute()
@@ -519,7 +518,6 @@ class YouTubeLivestream:
         # Update it
         LOGGER.debug("Updating the video description...")
         video = self.service.videos().update(
-            id=video_id,
             part="id,snippet",
             body=body
         ).execute()
