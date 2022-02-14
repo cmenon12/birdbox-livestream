@@ -288,9 +288,10 @@ class YouTubeLivestream:
             }).execute()
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
-        # Add it to the playlist
+        # Add it to the playlist and set metadata
         time.sleep(10)
         self.add_to_week_playlist(broadcast["id"], start_time)
+        self.update_video_metadata(broadcast["id"])
 
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
@@ -452,6 +453,42 @@ class YouTubeLivestream:
 
         LOGGER.debug("Stream status is: %s.", stream["items"][0]["status"])
         return stream["items"][0]["status"]
+
+    def update_video_metadata(self, video_id: str) -> None:
+        """Update standard video metadata.
+
+        :param video_id: the ID of the video to update
+        :type video_id: str
+        """
+
+        LOGGER.info("Updating the video metadata...")
+        LOGGER.info(locals())
+
+        # Get the existing snippet details
+        video = self.service.videos().list(
+            id=video_id,
+            part="id,snippet"
+        ).execute()
+        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+
+        # Prepare the body
+        body = {"snippet": video["items"][0]["snippet"]}
+        body["snippet"]["categoryId"] = self.config["category_id"]
+        body["snippet"]["embeddable"] = True
+        body["snippet"]["tags"] = ["birdbox", "bird box", "livestream", "live stream", "2022", "bracknell"]
+        LOGGER.debug("Body is: \n%s.", body)
+
+        # Update it
+        LOGGER.debug("Updating the video metadata...")
+        video = self.service.videos().update(
+            id=video_id,
+            part="id,snippet",
+            body=body
+        ).execute()
+        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+
+        LOGGER.info("Video metadata updated successfully!")
+        return video
 
     def update_video_description(self, video_id: str, description: str) -> dict:
         """Update the description of the video.
