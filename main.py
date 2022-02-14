@@ -256,8 +256,8 @@ class YouTubeLivestream:
         LOGGER.debug("End time to the nearest hour is %s.", end_time.isoformat())
 
         # Create a description
-        description = f"Watch the livestream of the birdbox starting on {start_time.strftime('%a %d %b at %H:%M')}" \
-                      f" and ending at {end_time.strftime('%H:%M')} ({str(TIMEZONE.zone)} timezone). "
+        description = f"A livestream of the birdbox starting on {start_time.strftime('%a %d %b at %H.%M')}" \
+                      f" and ending at {end_time.strftime('%H.%M')} ({str(TIMEZONE.zone)} timezone). "
 
         # Schedule a new broadcast
         LOGGER.debug("Scheduling a new broadcast...")
@@ -289,6 +289,7 @@ class YouTubeLivestream:
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         # Add it to the playlist
+        time.sleep(10)
         self.add_to_week_playlist(broadcast["id"], start_time)
 
         # Save and return it
@@ -357,11 +358,25 @@ class YouTubeLivestream:
                 LOGGER.debug("Got a redundant transition error, continuing.")
             else:
                 raise googleapiclient.errors.HttpError(resp=error.resp, content=error.content) from error
-
-        # Save and return it
         self.live_broadcasts[start_time] = broadcast
         self.scheduled_broadcasts.pop(start_time)
         print(f"Started a broadcast at {start_time.isoformat()}")
+
+        # Update the description to point to the next one
+        live = self.get_broadcasts(BroadcastTypes.LIVE)
+        for start in live.keys():
+            end_time = datetime.fromisoformat(
+                live[start]["snippet"]["scheduledEndTime"].replace("Z",
+                                                                   "+00:00"))
+            if end_time == start_time:
+                description = f"{broadcast['snippet']['description']} Watch the next part here: https://youtu.be/{live[start]['id']}."
+                LOGGER.debug("Updating the description to %s.", description)
+                self.update_video_description(broadcast["id"], description)
+                break
+        else:
+            LOGGER.debug("No next video found (none starting at %s).", str(end_time))
+
+        # Return it
         LOGGER.info("Broadcast started successfully!\n")
         return broadcast
 
@@ -540,6 +555,8 @@ class YouTubeLivestream:
             }
         ).execute()
         LOGGER.debug("Playlist Item is: \n%s.", json.dumps(playlist_item, indent=4))
+
+        LOGGER.info("Added the video to the week's playlist successfully!")
 
 
 def send_error_email(config: configparser.SectionProxy, trace: str,
