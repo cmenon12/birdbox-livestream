@@ -372,7 +372,7 @@ class YouTubeLivestream:
             if end_time == start_time:
                 description = f"{broadcast['snippet']['description']} Watch the next part here: https://youtu.be/{live[start]['id']}."
                 LOGGER.debug("Updating the description to %s.", description)
-                self.update_video_description(broadcast["id"], description)
+                self.update_video_metadata(broadcast["id"], description)
                 break
         else:
             LOGGER.debug("No next video found (none starting at %s).", str(end_time))
@@ -454,7 +454,7 @@ class YouTubeLivestream:
         LOGGER.debug("Stream status is: %s.", stream["items"][0]["status"])
         return stream["items"][0]["status"]
 
-    def update_video_metadata(self, video_id: str) -> None:
+    def update_video_metadata(self, video_id: str, description: Optional[str] = None) -> None:
         """Update standard video metadata.
 
         :param video_id: the ID of the video to update
@@ -472,10 +472,15 @@ class YouTubeLivestream:
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
         # Prepare the body
-        body = {"snippet": video["items"][0]["snippet"]}
+        body = {}
         body["snippet"]["categoryId"] = self.config["category_id"]
         body["snippet"]["embeddable"] = True
         body["snippet"]["tags"] = ["birdbox", "bird box", "livestream", "live stream", "2022", "bracknell"]
+        body["snippet"]["description"] = description if description is not None else video["items"][0]["snippet"][
+            "description"]
+        body["snippet"]["title"] = video["items"][0]["snippet"]["title"]
+        body["snippet"]["defaultLanguage"] = "en-GB"
+
         LOGGER.debug("Body is: \n%s.", body)
 
         # Update it
@@ -487,44 +492,6 @@ class YouTubeLivestream:
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
         LOGGER.info("Video metadata updated successfully!")
-        return video
-
-    def update_video_description(self, video_id: str, description: str) -> dict:
-        """Update the description of the video.
-
-        :param video_id: the ID of the video
-        :type video_id: str
-        :param description: the new description
-        :type id: str
-        :return: the updated video resource
-        :rtype: dict
-        """
-
-        LOGGER.info("Updating the video description...")
-        LOGGER.info(locals())
-
-        # Get the existing snippet details
-        video = self.service.videos().list(
-            id=video_id,
-            part="id,snippet"
-        ).execute()
-        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
-
-        # Prepare the body
-        body = {"snippet": video["items"][0]["snippet"]}
-        body["snippet"]["description"] = description
-        LOGGER.debug("Body is: \n%s.", body)
-
-        # Update it
-        LOGGER.debug("Updating the video description...")
-        video = self.service.videos().update(
-            part="id,snippet",
-            body=body
-        ).execute()
-        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
-
-        LOGGER.info("Video description updated successfully!")
-        return video
 
     def add_to_week_playlist(self, video_id: str, start_time: datetime) -> None:
         """Add the video to the playlist for the week.
