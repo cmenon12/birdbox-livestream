@@ -474,12 +474,17 @@ class YouTubeLivestream:
         ).execute()
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
+        # Prepare the body
+        body = {"snippet": video["items"][0]["snippet"]}
+        body["snippet"]["description"] = description
+        LOGGER.debug("Body is: \n%s.", body)
+
         # Update it
         LOGGER.debug("Updating the video description...")
         video = self.service.videos().update(
             id=video_id,
             part="id,snippet",
-            streamId=self.get_stream()["id"]
+            body=body
         ).execute()
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
@@ -489,7 +494,7 @@ class YouTubeLivestream:
     def add_to_week_playlist(self, video_id: str, start_time: datetime) -> None:
         """Add the video to the playlist for the week.
 
-        :param video_id: the id of the video to add
+        :param video_id: the ID of the video to add
         :type video_id: str
         :param start_time: the start time of the video
         :type start_time: datetime.datetime
