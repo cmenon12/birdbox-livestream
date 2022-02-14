@@ -288,10 +288,9 @@ class YouTubeLivestream:
             }).execute()
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
-        # Add it to the playlist and set metadata
+        # Add it to the playlist
         time.sleep(10)
         self.add_to_week_playlist(broadcast["id"], start_time)
-        self.update_video_metadata(broadcast["id"])
 
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
@@ -364,6 +363,7 @@ class YouTubeLivestream:
         print(f"Started a broadcast at {start_time.isoformat()}")
 
         # Update the description to point to the next one
+        time.sleep(10)
         live = self.get_broadcasts(BroadcastTypes.LIVE)
         for start in live.keys():
             end_time = datetime.fromisoformat(
@@ -472,9 +472,8 @@ class YouTubeLivestream:
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
         # Prepare the body
-        body = {}
+        body = {"snippet": {}}
         body["snippet"]["categoryId"] = self.config["category_id"]
-        body["snippet"]["embeddable"] = True
         body["snippet"]["tags"] = ["birdbox", "bird box", "livestream", "live stream", "2022", "bracknell"]
         body["snippet"]["description"] = description if description is not None else video["items"][0]["snippet"][
             "description"]
