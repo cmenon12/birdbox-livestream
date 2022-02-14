@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-read -p "What's the RTMP URL? " url
+read -e -p "What's the RTMP URL? " url
 
 while true
 do
