@@ -362,18 +362,6 @@ class YouTubeLivestream:
         self.scheduled_broadcasts.pop(start_time)
         print(f"Started a broadcast at {start_time.isoformat()}")
 
-        # Update the description to point to the next one
-        time.sleep(120)
-        end_time = datetime.fromisoformat(broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
-        live = self.get_broadcasts(BroadcastTypes.LIVE)
-        if end_time in live.keys():
-            description = f"{broadcast['snippet']['description']} Watch the next part here: https://youtu.be/{live[end_time]['id']}."
-            LOGGER.debug("Updating the description to %s.", description)
-            self.update_video_metadata(broadcast["id"], description)
-        else:
-            LOGGER.debug("No next video found (none starting at %s).", str(end_time))
-            self.update_video_metadata(broadcast["id"])
-
         # Return it
         LOGGER.info("Broadcast started successfully!\n")
         return broadcast
@@ -395,7 +383,7 @@ class YouTubeLivestream:
         if start_time not in self.live_broadcasts:
             raise ValueError(f"The broadcast at {start_time.isoformat()} is not live!")
 
-        # Change its status to complete
+        # Change its status to complete and save it
         LOGGER.debug("Transitioning the broadcastStatus to complete...")
         try:
             broadcast = self.service.liveBroadcasts().transition(
@@ -412,10 +400,23 @@ class YouTubeLivestream:
                 self.finished_broadcasts[start_time] = self.live_broadcasts[start_time]
             else:
                 raise googleapiclient.errors.HttpError(resp=error.resp, content=error.content) from error
-
-        # Save and return the updated resource
         self.live_broadcasts.pop(start_time)
         print(f"Ended a broadcast that started at {start_time.isoformat()}")
+
+        # Update the description to point to the next one
+        time.sleep(120)
+        end_time = datetime.fromisoformat(
+            self.finished_broadcasts[start_time]["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
+        broadcasts = self.get_broadcasts(BroadcastTypes.ALL)
+        if end_time in broadcasts.keys():
+            description = f"{self.finished_broadcasts[start_time]['snippet']['description']} Watch the next part here: https://youtu.be/{broadcasts[end_time]['id']}."
+            LOGGER.debug("Updating the description to %s.", description)
+            self.update_video_metadata(self.finished_broadcasts[start_time]["id"], description)
+        else:
+            LOGGER.debug("No next video found (none starting at %s).", str(end_time))
+            self.update_video_metadata(self.finished_broadcasts[start_time]["id"])
+
+        # Save and return the updated resource
         LOGGER.info("Broadcast ended successfully!\n")
         return self.finished_broadcasts[start_time]
 
