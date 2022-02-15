@@ -363,19 +363,16 @@ class YouTubeLivestream:
         print(f"Started a broadcast at {start_time.isoformat()}")
 
         # Update the description to point to the next one
-        time.sleep(10)
+        time.sleep(120)
+        end_time = datetime.fromisoformat(broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
         live = self.get_broadcasts(BroadcastTypes.LIVE)
-        for start in live.keys():
-            end_time = datetime.fromisoformat(
-                live[start]["snippet"]["scheduledEndTime"].replace("Z",
-                                                                   "+00:00"))
-            if end_time == start_time:
-                description = f"{broadcast['snippet']['description']} Watch the next part here: https://youtu.be/{live[start]['id']}."
-                LOGGER.debug("Updating the description to %s.", description)
-                self.update_video_metadata(broadcast["id"], description)
-                break
+        if end_time in live.keys():
+            description = f"{broadcast['snippet']['description']} Watch the next part here: https://youtu.be/{live[end_time]['id']}."
+            LOGGER.debug("Updating the description to %s.", description)
+            self.update_video_metadata(broadcast["id"], description)
         else:
             LOGGER.debug("No next video found (none starting at %s).", str(end_time))
+            self.update_video_metadata(broadcast["id"])
 
         # Return it
         LOGGER.info("Broadcast started successfully!\n")
