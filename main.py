@@ -26,7 +26,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 import googleapiclient
 from func_timeout import func_set_timeout, FunctionTimedOut
@@ -168,6 +168,35 @@ class YouTubeLivestream:
         LOGGER.info("Service authorised successfully!\n")
         return service
 
+    @staticmethod
+    def execute_request(request: googleapiclient.http.HttpRequest) -> Any:
+        """Execute the request safely, ignoring some errors.
+
+        :param request: the request to execute
+        :type request: googleapiclient.http.HttpRequest
+        :return: the response
+        :rtype: Any
+        """
+
+        print(type(request))
+        count = 0
+        limit = 5
+        while count < limit:
+            try:
+                response = request.execute()
+                print(type(response))
+                return response
+            except (BrokenPipeError, IOError) as error:
+                LOGGER.exception("There was an error with executing the request!")
+                count += 1
+                if count >= limit:
+                    raise IOError from error
+                LOGGER.debug("Continuing in 60...")
+                time.sleep(60)
+
+        # Catch-all
+        return Exception("Request failed after 5 retries.")
+
     def get_stream(self) -> dict:
         """Gets the live_stream, creating it if needed.
 
@@ -185,7 +214,7 @@ class YouTubeLivestream:
 
         # Create a new livestream
         LOGGER.debug("Creating a new stream...")
-        stream = self.service.liveStreams().insert(
+        stream = self.execute_request(self.service.liveStreams().insert(
             part="snippet,cdn,contentDetails,id,status",
             body={
                 "cdn": {
@@ -199,7 +228,7 @@ class YouTubeLivestream:
                 "snippet": {
                     "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).isoformat()}"
                 }
-            }).execute()
+            }))
         LOGGER.debug("Stream is: \n%s.", json.dumps(stream, indent=4))
 
         # Save and return it
@@ -261,7 +290,7 @@ class YouTubeLivestream:
 
         # Schedule a new broadcast
         LOGGER.debug("Scheduling a new broadcast...")
-        broadcast = self.service.liveBroadcasts().insert(
+        broadcast = self.execute_request(self.service.liveBroadcasts().insert(
             part="id,snippet,contentDetails,status",
             body={
                 "contentDetails": {
@@ -285,7 +314,7 @@ class YouTubeLivestream:
                     "privacyStatus": self.config["privacy_status"],
                     "selfDeclaredMadeForKids": False
                 }
-            }).execute()
+            }))
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         # Add it to the playlist
@@ -317,11 +346,11 @@ class YouTubeLivestream:
 
         # Bind the broadcast to the stream
         LOGGER.debug("Binding the broadcast to the stream...")
-        broadcast = self.service.liveBroadcasts().bind(
+        broadcast = self.execute_request(self.service.liveBroadcasts().bind(
             id=self.scheduled_broadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status",
             streamId=self.get_stream()["id"]
-        ).execute()
+        ))
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         limit = 60
@@ -337,20 +366,20 @@ class YouTubeLivestream:
 
         # # Get the broadcast
         # LOGGER.debug("Getting the broadcast...")
-        # broadcast_temp = self.service.liveBroadcasts().list(
+        # broadcast_temp = self.execute_request(self.service.liveBroadcasts().list(
         #     id=broadcast["id"],
         #     part="id,snippet,contentDetails,status"
-        # ).execute()
+        # ))
         # LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast_temp, indent=4))
 
         # Change its status to live
         LOGGER.debug("Transitioning the broadcastStatus to live...")
         try:
-            broadcast = self.service.liveBroadcasts().transition(
+            broadcast = self.execute_request(self.service.liveBroadcasts().transition(
                 broadcastStatus="live",
                 id=broadcast["id"],
                 part="id,snippet,contentDetails,status"
-            ).execute()
+            ))
             LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
         except googleapiclient.errors.HttpError as error:
             content = ast.literal_eval(error.content.decode("utf-8"))
@@ -399,11 +428,11 @@ class YouTubeLivestream:
         # Change its status to complete
         LOGGER.debug("Transitioning the broadcastStatus to complete...")
         try:
-            broadcast = self.service.liveBroadcasts().transition(
+            broadcast = self.execute_request(self.service.liveBroadcasts().transition(
                 broadcastStatus="complete",
                 id=self.live_broadcasts[start_time]["id"],
                 part="id,snippet,contentDetails,status"
-            ).execute()
+            ))
             LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
             self.finished_broadcasts[start_time] = broadcast
         except googleapiclient.errors.HttpError as error:
@@ -444,10 +473,10 @@ class YouTubeLivestream:
         :rtype: dict
         """
 
-        stream = self.service.liveStreams().list(
+        stream = self.execute_request(self.service.liveStreams().list(
             id=self.get_stream()["id"],
             part="status"
-        ).execute()
+        ))
 
         LOGGER.debug("Stream status is: %s.", stream["items"][0]["status"])
         return stream["items"][0]["status"]
@@ -463,10 +492,10 @@ class YouTubeLivestream:
         LOGGER.info(locals())
 
         # Get the existing snippet details
-        video = self.service.videos().list(
+        video = self.execute_request(self.service.videos().list(
             id=video_id,
             part="id,snippet"
-        ).execute()
+        ))
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
         # Prepare the body
@@ -482,10 +511,10 @@ class YouTubeLivestream:
 
         # Update it
         LOGGER.debug("Updating the video metadata...")
-        video = self.service.videos().update(
+        video = self.execute_request(self.service.videos().update(
             part="id,snippet",
             body=body
-        ).execute()
+        ))
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
         LOGGER.info("Video metadata updated successfully!")
@@ -512,11 +541,11 @@ class YouTubeLivestream:
             # TODO: implement paging
             LOGGER.debug("Fetching all the playlists...")
             all_playlists = []
-            response = self.service.playlists().list(
+            response = self.execute_request(self.service.playlists().list(
                 part="id,snippet",
                 mine=True,
                 maxResults=50
-            ).execute()
+            ))
             LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
             all_playlists.extend(response["items"])
             LOGGER.debug("Playlists is: \n%s.", json.dumps(all_playlists, indent=4))
@@ -531,7 +560,7 @@ class YouTubeLivestream:
                 # Create a new playlist
                 LOGGER.debug("Creating a new playlist...")
                 description = f"This playlist has videos of the birdbox from {(start_time - timedelta(days=start_time.weekday())).strftime('%a %d %B')} to {(start_time - timedelta(days=start_time.weekday() - 6)).strftime('%a %d %B')}. "
-                self.week_playlist = self.service.playlists().insert(
+                self.week_playlist = self.execute_request(self.service.playlists().insert(
                     part="id,snippet,status",
                     body={
                         "snippet": {
@@ -542,11 +571,11 @@ class YouTubeLivestream:
                             "privacyStatus": self.config["privacy_status"]
                         }
                     }
-                ).execute()
+                ))
                 LOGGER.debug("Playlist is: \n%s.", json.dumps(self.week_playlist, indent=4))
 
         # Add the video to the playlist
-        playlist_item = self.service.playlistItems().insert(
+        playlist_item = self.execute_request(self.service.playlistItems().insert(
             part="id,snippet",
             body={
                 "snippet": {
@@ -557,7 +586,7 @@ class YouTubeLivestream:
                     }
                 }
             }
-        ).execute()
+        ))
         LOGGER.debug("Playlist Item is: \n%s.", json.dumps(playlist_item, indent=4))
 
         LOGGER.info("Added the video to the week's playlist successfully!")
