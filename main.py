@@ -87,7 +87,8 @@ class YouTubeLivestream:
         self.live_broadcasts = {}
 
     @staticmethod
-    def get_service(open_browser: Optional[Union[bool, str]] = False) -> googleapiclient.discovery.Resource:
+    def get_service(open_browser: Optional[Union[bool, str]]
+                    = False) -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
 
         :return: the YouTube API service (a Resource)
@@ -106,7 +107,8 @@ class YouTubeLivestream:
                     CLIENT_SECRET_FILE, SCOPES,
                     redirect_uri="urn:ietf:wg:oauth:2.0:oob")
                 auth_url, _ = flow.authorization_url(prompt="consent")
-                print(f"Please visit this URL to authorize this application: {auth_url}")
+                print(
+                    f"Please visit this URL to authorize this application: {auth_url}")
                 print("The URL has been copied to the clipboard.")
 
                 # Get the authorization code
@@ -187,7 +189,8 @@ class YouTubeLivestream:
                 print(type(response))
                 return response
             except (BrokenPipeError, IOError) as error:
-                LOGGER.exception("There was an error with executing the request!")
+                LOGGER.exception(
+                    "There was an error with executing the request!")
                 count += 1
                 if count >= limit:
                     raise IOError from error
@@ -251,8 +254,11 @@ class YouTubeLivestream:
         LOGGER.info("Livestream URL fetched and returned successfully!\n")
         return url
 
-    def schedule_broadcast(self, start_time: datetime = datetime.now(tz=TIMEZONE),
-                           duration_mins: int = 0) -> dict:
+    def schedule_broadcast(
+            self,
+            start_time: datetime = datetime.now(
+                tz=TIMEZONE),
+            duration_mins: int = 0) -> dict:
         """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
@@ -272,7 +278,9 @@ class YouTubeLivestream:
 
         # Stop if a broadcast already exists at this time
         if start_time in self.get_broadcasts().keys():
-            LOGGER.debug("Returning existing broadcast at %s.", start_time.isoformat())
+            LOGGER.debug(
+                "Returning existing broadcast at %s.",
+                start_time.isoformat())
             LOGGER.info("Broadcast scheduled successfully!\n")
             return self.get_broadcasts()[start_time]
 
@@ -282,7 +290,9 @@ class YouTubeLivestream:
         end_time = end_time.replace(second=0, microsecond=0, minute=0,
                                     hour=end_time.hour) + timedelta(
             hours=end_time.minute // 30)
-        LOGGER.debug("End time to the nearest hour is %s.", end_time.isoformat())
+        LOGGER.debug(
+            "End time to the nearest hour is %s.",
+            end_time.isoformat())
 
         # Create a description
         description = f"A livestream of the birdbox starting on {start_time.strftime('%a %d %b at %H.%M')}" \
@@ -323,7 +333,8 @@ class YouTubeLivestream:
 
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
-        print(f"Scheduled a broadcast at {start_time.isoformat()} till {end_time.isoformat()}")
+        print(
+            f"Scheduled a broadcast at {start_time.isoformat()} till {end_time.isoformat()}")
         LOGGER.info("Broadcast scheduled successfully!\n")
         return broadcast
 
@@ -342,7 +353,8 @@ class YouTubeLivestream:
 
         # Check that this broadcast exists.
         if start_time not in self.scheduled_broadcasts:
-            raise ValueError(f"The broadcast at {start_time.isoformat()} is not scheduled!")
+            raise ValueError(
+                f"The broadcast at {start_time.isoformat()} is not scheduled!")
 
         # Bind the broadcast to the stream
         LOGGER.debug("Binding the broadcast to the stream...")
@@ -362,7 +374,8 @@ class YouTubeLivestream:
             time.sleep(5)
             stream_status = self.get_stream_status()
         if counter == limit:
-            raise TimeoutError(f"Stream status still isn't active after {round(limit * (5 / 60), 2)} minutes!")
+            raise TimeoutError(
+                f"Stream status still isn't active after {round(limit * (5 / 60), 2)} minutes!")
 
         # # Get the broadcast
         # LOGGER.debug("Getting the broadcast...")
@@ -375,32 +388,41 @@ class YouTubeLivestream:
         # Change its status to live
         LOGGER.debug("Transitioning the broadcastStatus to live...")
         try:
-            broadcast = self.execute_request(self.service.liveBroadcasts().transition(
-                broadcastStatus="live",
-                id=broadcast["id"],
-                part="id,snippet,contentDetails,status"
-            ))
-            LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
+            broadcast = self.execute_request(
+                self.service.liveBroadcasts().transition(
+                    broadcastStatus="live",
+                    id=broadcast["id"],
+                    part="id,snippet,contentDetails,status"))
+            LOGGER.debug(
+                "Broadcast is: \n%s.",
+                json.dumps(
+                    broadcast,
+                    indent=4))
         except googleapiclient.errors.HttpError as error:
             content = ast.literal_eval(error.content.decode("utf-8"))
             if content["error"]["message"] == "Redundant transition":
                 LOGGER.debug("Got a redundant transition error, continuing.")
             else:
-                raise googleapiclient.errors.HttpError(resp=error.resp, content=error.content) from error
+                raise googleapiclient.errors.HttpError(
+                    resp=error.resp, content=error.content) from error
         self.live_broadcasts[start_time] = broadcast
         self.scheduled_broadcasts.pop(start_time)
 
         # Update the description to point to the next one
         time.sleep(10)
         end_time = datetime.fromisoformat(
-            self.live_broadcasts[start_time]["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
+            self.live_broadcasts[start_time]["snippet"]["scheduledEndTime"].replace(
+                "Z", "+00:00"))
         broadcasts = self.get_broadcasts(BroadcastTypes.ALL)
         if end_time in broadcasts.keys():
             description = f"{self.live_broadcasts[start_time]['snippet']['description']} Watch the next part here: https://youtu.be/{broadcasts[end_time]['id']}."
             LOGGER.debug("Updating the description to %s.", description)
-            self.update_video_metadata(self.live_broadcasts[start_time]["id"], description)
+            self.update_video_metadata(
+                self.live_broadcasts[start_time]["id"], description)
         else:
-            LOGGER.debug("No next video found (none starting at %s).", str(end_time))
+            LOGGER.debug(
+                "No next video found (none starting at %s).",
+                str(end_time))
             self.update_video_metadata(self.live_broadcasts[start_time]["id"])
 
         # Return it
@@ -423,17 +445,22 @@ class YouTubeLivestream:
 
         # Check that this broadcast exists
         if start_time not in self.live_broadcasts:
-            raise ValueError(f"The broadcast at {start_time.isoformat()} is not live!")
+            raise ValueError(
+                f"The broadcast at {start_time.isoformat()} is not live!")
 
         # Change its status to complete
         LOGGER.debug("Transitioning the broadcastStatus to complete...")
         try:
-            broadcast = self.execute_request(self.service.liveBroadcasts().transition(
-                broadcastStatus="complete",
-                id=self.live_broadcasts[start_time]["id"],
-                part="id,snippet,contentDetails,status"
-            ))
-            LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
+            broadcast = self.execute_request(
+                self.service.liveBroadcasts().transition(
+                    broadcastStatus="complete",
+                    id=self.live_broadcasts[start_time]["id"],
+                    part="id,snippet,contentDetails,status"))
+            LOGGER.debug(
+                "Broadcast is: \n%s.",
+                json.dumps(
+                    broadcast,
+                    indent=4))
             self.finished_broadcasts[start_time] = broadcast
         except googleapiclient.errors.HttpError as error:
             content = ast.literal_eval(error.content.decode("utf-8"))
@@ -441,7 +468,8 @@ class YouTubeLivestream:
                 LOGGER.debug("Got a redundant transition error, continuing.")
                 self.finished_broadcasts[start_time] = self.live_broadcasts[start_time]
             else:
-                raise googleapiclient.errors.HttpError(resp=error.resp, content=error.content) from error
+                raise googleapiclient.errors.HttpError(
+                    resp=error.resp, content=error.content) from error
 
         # Save and return the updated resource
         self.live_broadcasts.pop(start_time)
@@ -464,7 +492,10 @@ class YouTubeLivestream:
             return self.live_broadcasts
         if category == BroadcastTypes.FINISHED:
             return self.finished_broadcasts
-        return {**self.scheduled_broadcasts, **self.live_broadcasts, **self.finished_broadcasts}
+        return {
+            **self.scheduled_broadcasts,
+            **self.live_broadcasts,
+            **self.finished_broadcasts}
 
     def get_stream_status(self) -> dict:
         """Fetch and return the status of the livestream.
@@ -481,7 +512,10 @@ class YouTubeLivestream:
         LOGGER.debug("Stream status is: %s.", stream["items"][0]["status"])
         return stream["items"][0]["status"]
 
-    def update_video_metadata(self, video_id: str, description: Optional[str] = None) -> None:
+    def update_video_metadata(
+            self,
+            video_id: str,
+            description: Optional[str] = None) -> None:
         """Update standard video metadata.
 
         :param video_id: the ID of the video to update
@@ -519,7 +553,10 @@ class YouTubeLivestream:
 
         LOGGER.info("Video metadata updated successfully!")
 
-    def add_to_week_playlist(self, video_id: str, start_time: datetime) -> None:
+    def add_to_week_playlist(
+            self,
+            video_id: str,
+            start_time: datetime) -> None:
         """Add the video to the playlist for the week.
 
         :param video_id: the ID of the video to add
@@ -532,7 +569,10 @@ class YouTubeLivestream:
         LOGGER.info(locals())
 
         # Calculate the title
-        playlist_title = (start_time - timedelta(days=start_time.weekday())).strftime("W%W: w/c %d %b")
+        playlist_title = (
+                start_time -
+                timedelta(
+                    days=start_time.weekday())).strftime("W%W: w/c %d %b")
 
         # Only get the playlist for this week if we don't already have it
         if self.week_playlist is None or self.week_playlist["snippet"]["title"] != playlist_title:
@@ -548,7 +588,11 @@ class YouTubeLivestream:
             ))
             LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
             all_playlists.extend(response["items"])
-            LOGGER.debug("Playlists is: \n%s.", json.dumps(all_playlists, indent=4))
+            LOGGER.debug(
+                "Playlists is: \n%s.",
+                json.dumps(
+                    all_playlists,
+                    indent=4))
 
             # Try & find this week's playlist
             for item in all_playlists:
@@ -560,34 +604,31 @@ class YouTubeLivestream:
                 # Create a new playlist
                 LOGGER.debug("Creating a new playlist...")
                 description = f"This playlist has videos of the birdbox from {(start_time - timedelta(days=start_time.weekday())).strftime('%a %d %B')} to {(start_time - timedelta(days=start_time.weekday() - 6)).strftime('%a %d %B')}. "
-                self.week_playlist = self.execute_request(self.service.playlists().insert(
-                    part="id,snippet,status",
-                    body={
-                        "snippet": {
-                            "title": playlist_title,
-                            "description": description
-                        },
-                        "status": {
-                            "privacyStatus": self.config["privacy_status"]
-                        }
-                    }
-                ))
-                LOGGER.debug("Playlist is: \n%s.", json.dumps(self.week_playlist, indent=4))
+                self.week_playlist = self.execute_request(
+                    self.service.playlists().insert(
+                        part="id,snippet,status", body={
+                            "snippet": {
+                                "title": playlist_title, "description": description}, "status": {
+                                "privacyStatus": self.config["privacy_status"]}}))
+                LOGGER.debug(
+                    "Playlist is: \n%s.", json.dumps(
+                        self.week_playlist, indent=4))
 
         # Add the video to the playlist
-        playlist_item = self.execute_request(self.service.playlistItems().insert(
-            part="id,snippet",
-            body={
-                "snippet": {
-                    "playlistId": self.week_playlist["id"],
-                    "resourceId": {
-                        "videoId": video_id,
-                        "kind": "youtube#video"
-                    }
-                }
-            }
-        ))
-        LOGGER.debug("Playlist Item is: \n%s.", json.dumps(playlist_item, indent=4))
+        playlist_item = self.execute_request(
+            self.service.playlistItems().insert(
+                part="id,snippet",
+                body={
+                    "snippet": {
+                        "playlistId": self.week_playlist["id"],
+                        "resourceId": {
+                            "videoId": video_id,
+                            "kind": "youtube#video"}}}))
+        LOGGER.debug(
+            "Playlist Item is: \n%s.",
+            json.dumps(
+                playlist_item,
+                indent=4))
 
         LOGGER.info("Added the video to the week's playlist successfully!")
 
@@ -700,7 +741,8 @@ def main():
                     last_start_time = max(live.keys())
                 last_broadcast = scheduled[last_start_time]
                 start_time = datetime.fromisoformat(
-                    last_broadcast["snippet"]["scheduledEndTime"].replace("Z", "+00:00"))
+                    last_broadcast["snippet"]["scheduledEndTime"].replace(
+                        "Z", "+00:00"))
                 yt.schedule_broadcast(start_time)
 
             time.sleep(5)
@@ -715,8 +757,8 @@ def main():
             # Finish broadcasts
             for start_time in live.keys():
                 end_time = datetime.fromisoformat(
-                    live[start_time]["snippet"]["scheduledEndTime"].replace("Z",
-                                                                            "+00:00"))
+                    live[start_time]["snippet"]["scheduledEndTime"].replace(
+                        "Z", "+00:00"))
                 if end_time <= datetime.now(tz=TIMEZONE):
                     yt.end_broadcast(start_time)
 
@@ -729,7 +771,8 @@ def main():
                     time.sleep(60)
                 except Exception as error:
                     LOGGER.error("\n\n")
-                    LOGGER.exception("There was an exception logging the stream status, but we'll carry on anyway.")
+                    LOGGER.exception(
+                        "There was an exception logging the stream status, but we'll carry on anyway.")
                     time.sleep(30)
 
     except Exception as error:
@@ -748,8 +791,9 @@ if __name__ == "__main__":
         format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
         level=logging.DEBUG,
         handlers=[
-            logging.FileHandler(f"./logs/{log_filename}", mode="a")
-        ])
+            logging.FileHandler(
+                f"./logs/{log_filename}",
+                mode="a")])
     LOGGER = logging.getLogger(__name__)
 
     # Run it
