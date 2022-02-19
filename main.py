@@ -124,9 +124,9 @@ class YouTubeLivestream:
         credentials = None
 
         # Attempt to access pre-existing credentials
-        if os.path.exists(TOKEN_PICKLE_FILE):
-            with open(TOKEN_PICKLE_FILE, "rb") as token:
-                LOGGER.debug("Loading credentials from %s.", TOKEN_PICKLE_FILE)
+        if os.path.exists(token_file):
+            with open(token_file, "rb") as token:
+                LOGGER.debug("Loading credentials from %s.", token_file)
                 credentials = pickle.load(token)
 
         # If there are no (valid) credentials available let the user log in
@@ -137,7 +137,7 @@ class YouTubeLivestream:
                 try:
                     credentials.refresh(Request())
                 except RefreshError:
-                    os.remove(TOKEN_PICKLE_FILE)
+                    os.remove(token_file)
 
                     try:
                         credentials = authorize_in_browser()
@@ -156,15 +156,16 @@ class YouTubeLivestream:
             credentials.refresh(Request())
 
         # Save the credentials for the next run
-        with open(TOKEN_PICKLE_FILE, "wb") as token:
+        with open(token_file, "wb") as token:
+            print()
             pickle.dump(credentials, token)
         LOGGER.debug("Credentials saved to %s successfully.",
-                     TOKEN_PICKLE_FILE)
+                     token_file)
 
         # Create and return the authenticated service
         service = build("youtube", "v3", credentials=credentials)
 
-        assert os.path.exists(TOKEN_PICKLE_FILE)
+        assert os.path.exists(token_file)
 
         LOGGER.info("Service authorised successfully!\n")
         return service
