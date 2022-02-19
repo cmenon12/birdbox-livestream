@@ -182,13 +182,11 @@ class YouTubeLivestream:
         :rtype: Any
         """
 
-        print(type(request))
         count = 0
         limit = 5
         while count < limit:
             try:
                 response = request.execute()
-                print(type(response))
                 return response
             except (BrokenPipeError, IOError) as error:
                 LOGGER.exception(
@@ -580,16 +578,19 @@ class YouTubeLivestream:
         if self.week_playlist is None or self.week_playlist["snippet"]["title"] != playlist_title:
 
             # Get all the playlists
-            # TODO: implement paging
             LOGGER.debug("Fetching all the playlists...")
+            next_page_token = ""
             all_playlists = []
-            response = self.execute_request(self.service.playlists().list(
-                part="id,snippet",
-                mine=True,
-                maxResults=50
-            ))
-            LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
-            all_playlists.extend(response["items"])
+            while next_page_token is not None:
+                response = self.execute_request(self.service.playlists().list(
+                    part="id,snippet",
+                    mine=True,
+                    maxResults=50,
+                    pageToken=next_page_token
+                ))
+                LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
+                all_playlists.extend(response["items"])
+                next_page_token = response.get("nextPageToken")
             LOGGER.debug(
                 "Playlists is: \n%s.",
                 json.dumps(
