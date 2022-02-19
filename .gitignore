@@ -131,6 +131,7 @@ dmypy.json
 # Project-specific
 client_secret.json
 token.pickle
+new-token.pickle
 /logs
 config.ini
 /.idea
