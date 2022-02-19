@@ -87,7 +87,8 @@ class YouTubeLivestream:
         self.live_broadcasts = {}
 
     @staticmethod
-    def get_service(open_browser: Optional[Union[bool, str]] = False) -> googleapiclient.discovery.Resource:
+    def get_service(open_browser: Optional[Union[bool, str]] = False,
+                    token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
 
         :return: the YouTube API service (a Resource)
