@@ -92,12 +92,50 @@ def get_motion_timestamps(filename: str):
         time_post_event="0s")
     result: List[Tuple[FrameTimecode, FrameTimecode,
                        FrameTimecode]] = scan.scan_motion()
+    if len(result) == 0:
+        output = "No motion was detected in this video 😢."
+    else:
+        output = "Motion was detected at the following points:\n"
     for item in result:
-        output += f"{item[0].get_timecode(0)} for {humanize.naturaldelta(item[2].get_seconds())}.\n"
+        output += f" • {item[0].get_timecode(0)} for {humanize.naturaldelta(item[2].get_seconds())}.\n"
     LOGGER.debug("Output is: \n%s.", output)
 
     LOGGER.info("Motion detected successfully!")
     return output
+
+
+def append_to_description(service: googleapiclient.discovery.Resource, video_id: str, text_to_append: str):
+    """Append the text to the description."""
+
+    LOGGER.info("Appending to the video description...")
+    LOGGER.info(locals())
+
+    # Get the existing snippet details
+    video = yt_livestream.YouTubeLivestream.execute_request(service.videos().list(
+        id=video_id,
+        part="id,snippet"
+    ))
+    LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+
+    # Prepare the body
+    body = {"id": video_id, "snippet": {}}
+    body["snippet"]["categoryId"] = video["items"][0]["snippet"]["categoryId"]
+    body["snippet"]["tags"] = video["items"][0]["snippet"]["tags"]
+    body["snippet"]["description"] = f"{video['items'][0]['snippet']['description']}\n\n{text_to_append}"
+    body["snippet"]["title"] = video["items"][0]["snippet"]["title"]
+    body["snippet"]["defaultLanguage"] = video["items"][0]["snippet"]["defaultLanguage"]
+
+    LOGGER.debug("Body is: \n%s.", body)
+
+    # Update it
+    LOGGER.debug("Updating the video metadata...")
+    video = yt_livestream.YouTubeLivestream.execute_request(service.videos().update(
+        part="id,snippet",
+        body=body
+    ))
+    LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+
+    LOGGER.info("Video description appended to successfully!")
 
 
 def main():
@@ -148,7 +186,7 @@ def main():
             print(f"Processing {video_id}...")
             filename = download_video(video_id)
             motion_detected = get_motion_timestamps(filename)
-            print(motion_detected)
+            append_to_description(service, video_id, motion_detected)
 
         # Save the new completed IDs
         if len(new_ids) != 0:
