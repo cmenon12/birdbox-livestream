@@ -2,6 +2,7 @@ import configparser
 import json
 import logging
 import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple, List, Dict
@@ -158,44 +159,52 @@ def main():
     main_config = parser["yt_livestream"]
     email_config = parser["email"]
 
-    # Get access to the YouTube API
-    service = yt_livestream.YouTubeLivestream.get_service()
-
-    # Try and load the list of completed IDs
     try:
-        with open(SAVE_DATA_FILENAME, "r") as file:
-            complete_broadcasts = json.load(file)
-        LOGGER.info("Loaded save data %s", complete_broadcasts)
-    except FileNotFoundError:
-        LOGGER.info("Could not find save data %s, using empty list.", SAVE_DATA_FILENAME)
-        complete_broadcasts = []
 
-    while True:
+        # Get access to the YouTube API
+        service = yt_livestream.YouTubeLivestream.get_service()
 
-        # Find out which videos need processing
-        new_ids = []
-        new_complete_broadcasts = get_complete_broadcasts(service)
-        for video_id in new_complete_broadcasts:
-            if video_id not in complete_broadcasts:
-                new_ids.append(video_id)
-                complete_broadcasts.append(video_id)
-        LOGGER.debug("new_ids is: %s.", new_ids)
+        # Try and load the list of completed IDs
+        try:
+            with open(SAVE_DATA_FILENAME, "r") as file:
+                complete_broadcasts = json.load(file)
+            LOGGER.info("Loaded save data %s", complete_broadcasts)
+        except FileNotFoundError:
+            LOGGER.info("Could not find save data %s, using empty list.", SAVE_DATA_FILENAME)
+            complete_broadcasts = []
 
-        # Process them
-        for video_id in new_ids:
-            print(f"Processing {video_id}...")
-            filename = download_video(video_id)
-            motion_detected = get_motion_timestamps(filename)
-            append_to_description(service, video_id, motion_detected)
+        while True:
 
-        # Save the new completed IDs
-        if len(new_ids) != 0:
-            with open(SAVE_DATA_FILENAME, "w") as file:
-                json.dump(complete_broadcasts, file)
-                LOGGER.debug("Saved the save data to %s successfully.", SAVE_DATA_FILENAME)
+            # Find out which videos need processing
+            new_ids = []
+            new_complete_broadcasts = get_complete_broadcasts(service)
+            for video_id in new_complete_broadcasts:
+                if video_id not in complete_broadcasts:
+                    new_ids.append(video_id)
+                    complete_broadcasts.append(video_id)
+            LOGGER.debug("new_ids is: %s.", new_ids)
 
-        # Wait before repeating
-        time.sleep(15 * 60)
+            # Process them
+            for video_id in new_ids:
+                print(f"Processing {video_id}...")
+                filename = download_video(video_id)
+                motion_detected = get_motion_timestamps(filename)
+                append_to_description(service, video_id, motion_detected)
+
+            # Save the new completed IDs
+            if len(new_ids) != 0:
+                with open(SAVE_DATA_FILENAME, "w") as file:
+                    json.dump(complete_broadcasts, file)
+                    LOGGER.debug("Saved the save data to %s successfully.", SAVE_DATA_FILENAME)
+
+            # Wait before repeating
+            time.sleep(15 * 60)
+
+    except Exception as error:
+        LOGGER.error("\n\n")
+        LOGGER.exception("There was an exception!!")
+        yt_livestream.send_error_email(email_config, traceback.format_exc(), log_filename)
+        raise Exception from error
 
 
 if __name__ == "__main__":
