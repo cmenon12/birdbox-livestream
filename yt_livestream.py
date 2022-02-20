@@ -707,7 +707,7 @@ def main():
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
     yt_config = parser["YouTubeLivestream"]
-    main_config = parser["main"]
+    main_config = parser["yt_livestream"]
     email_config = parser["email"]
 
     try:
