@@ -2,7 +2,7 @@
 
 import os
 
-import main as yt_livestream
+import yt_livestream
 
 NEW_TOKEN_PICKLE_FILE = "new-token.pickle"
 OLD_TOKEN_PICKLE_FILE = yt_livestream.TOKEN_PICKLE_FILE
