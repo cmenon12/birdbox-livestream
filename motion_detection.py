@@ -1,15 +1,19 @@
 import configparser
+import json
 import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 import dvr_scan
+import googleapiclient
 import humanize as humanize
 import yt_dlp
 from dvr_scan.timecode import FrameTimecode
 from pytz import timezone
+
+import yt_livestream
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -32,6 +36,33 @@ TOKEN_PICKLE_FILE = "token.pickle"
 
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
+
+
+def get_complete_broadcasts(service: googleapiclient.discovery.Resource) -> Dict[str, List[str]]:
+    # Get all the broadcasts
+    LOGGER.debug("Fetching all the broadcasts...")
+    next_page_token = ""
+    all_broadcasts = []
+    while next_page_token is not None:
+        response = yt_livestream.YouTubeLivestream.execute_request(service.playlists().list(
+            part="id,status",
+            mine=True,
+            maxResults=50,
+            pageToken=next_page_token
+        ))
+        LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
+        all_broadcasts.extend(response["items"])
+        next_page_token = response.get("nextPageToken")
+    LOGGER.debug("all_broadcasts is: \n%s.", json.dumps(all_broadcasts, indent=4))
+
+    # Collate the complete broadcasts
+    complete_broadcasts = []
+    for item in response["items"]:
+        if item["status"]["lifeCycleStatus"] == "complete":
+            complete_broadcasts.append(item["id"])
+    LOGGER.debug("new_broadcasts is: \n%s.", json.dumps(complete_broadcasts, indent=4))
+
+    return complete_broadcasts
 
 
 def download_video(video_id: str):
