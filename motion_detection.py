@@ -11,8 +11,6 @@ import yt_dlp
 from dvr_scan.timecode import FrameTimecode
 from pytz import timezone
 
-import yt_livestream
-
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
@@ -46,7 +44,8 @@ def download_video(video_id: str):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         print("here")
         ydl.download(f"https://youtu.be/{video_id}")
-        filename = ydl.extract_info(f"https://youtu.be/{video_id}")["requested_downloads"][0]["_filename"]
+        filename = ydl.extract_info(
+            f"https://youtu.be/{video_id}")["requested_downloads"][0]["_filename"]
 
     return filename
 
@@ -56,8 +55,12 @@ def get_motion_timestamps(filename: str):
 
     output = ""
     scan = dvr_scan.scanner.ScanContext([filename])
-    scan.set_event_params(min_event_len=25 * 5, time_pre_event="1s", time_post_event="0s")
-    result: List[Tuple[FrameTimecode, FrameTimecode, FrameTimecode]] = scan.scan_motion()
+    scan.set_event_params(
+        min_event_len=25 * 5,
+        time_pre_event="1s",
+        time_post_event="0s")
+    result: List[Tuple[FrameTimecode, FrameTimecode,
+                       FrameTimecode]] = scan.scan_motion()
     for item in result:
         output += f"{item[0].get_timecode(0)} for {humanize.naturaldelta(item[2].get_seconds())}.\n"
     return output
@@ -93,13 +96,13 @@ if __name__ == "__main__":
     # Prepare the log
     Path("./logs").mkdir(parents=True, exist_ok=True)
     log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
+    log_format = "%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s"
+    log_handler = logging.FileHandler(f"./logs/{log_filename}", mode="a")
+    log_handler.setFormatter(logging.Formatter(log_format))
     logging.basicConfig(
-        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
+        format=log_format,
         level=logging.DEBUG,
-        handlers=[
-            logging.FileHandler(
-                f"./logs/{log_filename}",
-                mode="a")])
+        handlers=[log_handler])
     LOGGER = logging.getLogger(__name__)
 
     # Run it
