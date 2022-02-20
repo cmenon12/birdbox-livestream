@@ -1,31 +1,14 @@
-import ast
 import configparser
-import email.utils
-import json
 import logging
-import os
-import pickle
-import re
-import smtplib
-import ssl
 import time
-import traceback
-from datetime import datetime, timedelta
-from email import encoders
-from email.mime.base import MIMEBase
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from enum import Enum, auto
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union, Any
+from typing import Tuple, List
 
-import googleapiclient
+import dvr_scan
+import humanize as humanize
 import yt_dlp
-from func_timeout import func_set_timeout, FunctionTimedOut
-from google.auth.exceptions import RefreshError
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+from dvr_scan.timecode import FrameTimecode
 from pytz import timezone
 
 import yt_livestream
@@ -53,8 +36,7 @@ TOKEN_PICKLE_FILE = "token.pickle"
 TIMEZONE = timezone("Europe/London")
 
 
-def run_motion_detection(service: googleapiclient.discovery.Resource, video_id: str):
-    # Download the video
+def download_video(video_id: str):
     ydl_opts = {
         "logger": LOGGER,
         "format": "best[height=144]+[ext=mp4]",
@@ -65,6 +47,20 @@ def run_motion_detection(service: googleapiclient.discovery.Resource, video_id: 
         print("here")
         ydl.download(f"https://youtu.be/{video_id}")
         filename = ydl.extract_info(f"https://youtu.be/{video_id}")["requested_downloads"][0]["_filename"]
+
+    return filename
+
+
+def get_motion_timestamps(filename: str):
+    """Detect motion and output a list of when it occurs."""
+
+    output = ""
+    scan = dvr_scan.scanner.ScanContext([filename])
+    scan.set_event_params(min_event_len=25 * 5, time_pre_event="1s", time_post_event="0s")
+    result: List[Tuple[FrameTimecode, FrameTimecode, FrameTimecode]] = scan.scan_motion()
+    for item in result:
+        output += f"{item[0].get_timecode(0)} for {humanize.naturaldelta(item[2].get_seconds())}.\n"
+    return output
 
 
 def main():
@@ -87,8 +83,9 @@ def main():
     main_config = parser["yt_livestream"]
     email_config = parser["email"]
 
-    service = yt_livestream.YouTubeLivestream.get_service()
-    run_motion_detection(None, "CRtFmfYqipE")
+    filename = download_video("eIT3lHx4jq0")
+    motion_detected = get_motion_timestamps(filename)
+    print(motion_detected)
 
 
 if __name__ == "__main__":

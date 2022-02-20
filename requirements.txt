@@ -5,3 +5,7 @@ pytz
 tzlocal
 func-timeout
 yt-dlp
+dvr-scan
+opencv-python
+progress_bar
+humanize
