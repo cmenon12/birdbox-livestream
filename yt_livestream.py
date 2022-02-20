@@ -646,7 +646,6 @@ def send_error_email(config: configparser.SectionProxy, trace: str,
     :type trace: str
     :param filename: the filename of the log file to attach
     :type filename: str
-    :return:
     """
 
     LOGGER.info("Sending the error email...")

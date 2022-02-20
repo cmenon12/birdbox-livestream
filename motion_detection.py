@@ -13,7 +13,7 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import Tuple, List, Dict
+from typing import Tuple, List
 
 import dvr_scan
 import googleapiclient
@@ -38,24 +38,38 @@ SAVE_DATA_FILENAME = "save_data.json"
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
 
+# The minimum length of the motion in seconds
+MIN_MOTION_DURATION = 3
 
-def get_complete_broadcasts(service: googleapiclient.discovery.Resource) -> Dict[str, List[str]]:
-    """Get a list of all complete broadcast IDs."""
+
+def get_complete_broadcasts(
+        service: googleapiclient.discovery.Resource) -> List[str]:
+    """Get a list of all complete broadcast IDs.
+
+    :param service: the YouTube API service
+    :type service: googleapiclient.discovery.Resource
+    :return: a list of IDs of complete broadcasts
+    :rtype: List[str]
+    """
 
     LOGGER.info("Fetching the complete broadcasts...")
     next_page_token = ""
     all_broadcasts = []
     while next_page_token is not None:
-        response = yt_livestream.YouTubeLivestream.execute_request(service.liveBroadcasts().list(
-            part="id,status",
-            mine=True,
-            maxResults=50,
-            pageToken=next_page_token
-        ))
+        response = yt_livestream.YouTubeLivestream.execute_request(
+            service.liveBroadcasts().list(
+                part="id,status",
+                mine=True,
+                maxResults=50,
+                pageToken=next_page_token))
         LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
         all_broadcasts.extend(response["items"])
         next_page_token = response.get("nextPageToken")
-    LOGGER.debug("all_broadcasts is: \n%s.", json.dumps(all_broadcasts, indent=4))
+    LOGGER.debug(
+        "all_broadcasts is: \n%s.",
+        json.dumps(
+            all_broadcasts,
+            indent=4))
 
     # Collate the complete broadcasts
     complete_broadcasts = []
@@ -69,7 +83,13 @@ def get_complete_broadcasts(service: googleapiclient.discovery.Resource) -> Dict
 
 
 def download_video(video_id: str) -> str:
-    """Download the YouTube video and return the filename."""
+    """Download the low-res YouTube video and return the filename.
+
+    :param video_id: the ID of the video to download
+    :type video_id: str
+    :return: the filename of the downloaded video
+    :rtype: str
+    """
 
     LOGGER.info("Downloading video...")
     LOGGER.info(locals())
@@ -89,15 +109,21 @@ def download_video(video_id: str) -> str:
     return filename
 
 
-def get_motion_timestamps(filename: str):
-    """Detect motion and output a list of when it occurs."""
+def get_motion_timestamps(filename: str) -> str:
+    """Detect motion and output a description of when it occurs.
+
+    :param filename: the video file to search
+    :type filename: str
+    :return: a description of the motion detected
+    :rtype: str
+    """
 
     LOGGER.info("Detecting motion...")
     LOGGER.info(locals())
     output = ""
     scan = dvr_scan.scanner.ScanContext([filename])
     scan.set_event_params(
-        min_event_len=25 * 5,
+        min_event_len=25 * MIN_MOTION_DURATION,
         time_pre_event="1s",
         time_post_event="0s")
     result: List[Tuple[FrameTimecode, FrameTimecode,
@@ -114,17 +140,26 @@ def get_motion_timestamps(filename: str):
     return output
 
 
-def update_motion_status(service: googleapiclient.discovery.Resource, video_id: str, motion_desc: str):
-    """Update the video with motion information."""
+def update_motion_status(
+        service: googleapiclient.discovery.Resource,
+        video_id: str,
+        motion_desc: str) -> None:
+    """Update the video with motion information.
+
+    :param service: the YouTube API service
+    :type service: googleapiclient.discovery.Resource
+    :param video_id: the ID of the video to update
+    :type video_id: str
+    :param motion_desc: a description of the motion detected
+    :type motion_desc: str
+    """
 
     LOGGER.info("Appending to the video description...")
     LOGGER.info(locals())
 
     # Get the existing snippet details
-    video = yt_livestream.YouTubeLivestream.execute_request(service.videos().list(
-        id=video_id,
-        part="id,snippet"
-    ))
+    video = yt_livestream.YouTubeLivestream.execute_request(
+        service.videos().list(id=video_id, part="id,snippet"))
     LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
     # Prepare a new title
@@ -132,7 +167,10 @@ def update_motion_status(service: googleapiclient.discovery.Resource, video_id: 
         title = f"{video['items'][0]['snippet']['title']} (no motion)"
     else:
         count = motion_desc.count(" for ")
-        title = f"{video['items'][0]['snippet']['title']} ({count} actions)"
+        if count == 1:
+            title = f"{video['items'][0]['snippet']['title']} ({count} action)"
+        else:
+            title = f"{video['items'][0]['snippet']['title']} ({count} actions)"
 
     # Prepare the body
     body = {"id": video_id, "snippet": {}}
@@ -146,17 +184,26 @@ def update_motion_status(service: googleapiclient.discovery.Resource, video_id: 
 
     # Update it
     LOGGER.debug("Updating the video metadata...")
-    video = yt_livestream.YouTubeLivestream.execute_request(service.videos().update(
-        part="id,snippet",
-        body=body
-    ))
+    video = yt_livestream.YouTubeLivestream.execute_request(
+        service.videos().update(part="id,snippet", body=body))
     LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
     LOGGER.info("Video description appended to successfully!")
 
 
-def send_motion_email(config: configparser.SectionProxy, video_id: str, motion_desc: str) -> None:
-    """Send an email about the motion that was detected."""
+def send_motion_email(
+        config: configparser.SectionProxy,
+        video_id: str,
+        motion_desc: str) -> None:
+    """Send an email about the motion that was detected.
+
+    :param config: the config to use
+    :type config: configparser.SectionProxy
+    :param video_id: the ID of the video
+    :type video_id: str
+    :param motion_desc: a description of the motion detected
+    :type motion_desc: str
+    """
 
     LOGGER.info("Sending the motion email...")
 
@@ -220,7 +267,9 @@ def main():
                 complete_broadcasts = json.load(file)
             LOGGER.info("Loaded save data %s", complete_broadcasts)
         except FileNotFoundError:
-            LOGGER.info("Could not find save data %s, using empty list.", SAVE_DATA_FILENAME)
+            LOGGER.info(
+                "Could not find save data %s, using empty list.",
+                SAVE_DATA_FILENAME)
             complete_broadcasts = []
 
         while True:
@@ -238,7 +287,11 @@ def main():
             for video_id in new_ids:
                 print(f"Processing {video_id}...")
                 filename = download_video(video_id)
-                LOGGER.debug("%s is %s big.", filename, humanize.naturalsize(os.path.getsize(filename)))
+                LOGGER.debug(
+                    "%s is %s big.",
+                    filename,
+                    humanize.naturalsize(
+                        os.path.getsize(filename)))
                 motion_desc = get_motion_timestamps(filename)
                 update_motion_status(service, video_id, motion_desc)
                 os.remove(filename)
@@ -250,7 +303,9 @@ def main():
             if len(new_ids) != 0:
                 with open(SAVE_DATA_FILENAME, "w") as file:
                     json.dump(complete_broadcasts, file)
-                    LOGGER.debug("Saved the save data to %s successfully.", SAVE_DATA_FILENAME)
+                    LOGGER.debug(
+                        "Saved the save data to %s successfully.",
+                        SAVE_DATA_FILENAME)
 
             # Wait before repeating
             time.sleep(15 * 60)
@@ -258,7 +313,8 @@ def main():
     except Exception as error:
         LOGGER.error("\n\n")
         LOGGER.exception("There was an exception!!")
-        yt_livestream.send_error_email(email_config, traceback.format_exc(), log_filename)
+        yt_livestream.send_error_email(
+            email_config, traceback.format_exc(), log_filename)
         raise Exception from error
 
 
