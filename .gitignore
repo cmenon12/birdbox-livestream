@@ -135,3 +135,6 @@ new-token.pickle
 /logs
 config.ini
 /.idea
+*.3gp
+*.mp4
+save_data.json
