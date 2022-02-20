@@ -1,9 +1,17 @@
 import configparser
+import email
+import email.utils
 import json
 import logging
+import os
+import re
+import smtplib
+import ssl
 import time
 import traceback
 from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Tuple, List, Dict
 
@@ -12,6 +20,7 @@ import googleapiclient
 import humanize as humanize
 import yt_dlp
 from dvr_scan.timecode import FrameTimecode
+from googleapiclient.discovery import build
 from pytz import timezone
 
 import yt_livestream
@@ -96,7 +105,7 @@ def get_motion_timestamps(filename: str):
     if len(result) == 0:
         output = "No motion was detected in this video 😢."
     else:
-        output = "Motion was detected at the following points:\n"
+        output = "\n\nMotion was detected at the following points:\n"
     for item in result:
         output += f" • {item[0].get_timecode(0)} for {humanize.naturaldelta(item[2].get_seconds())}.\n"
     LOGGER.debug("Output is: \n%s.", output)
@@ -105,8 +114,8 @@ def get_motion_timestamps(filename: str):
     return output
 
 
-def append_to_description(service: googleapiclient.discovery.Resource, video_id: str, text_to_append: str):
-    """Append the text to the description."""
+def update_motion_status(service: googleapiclient.discovery.Resource, video_id: str, motion_desc: str):
+    """Update the video with motion information."""
 
     LOGGER.info("Appending to the video description...")
     LOGGER.info(locals())
@@ -118,12 +127,19 @@ def append_to_description(service: googleapiclient.discovery.Resource, video_id:
     ))
     LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
+    # Prepare a new title
+    if "No motion" in motion_desc:
+        title = f"{video['items'][0]['snippet']['title']} (no motion)"
+    else:
+        count = motion_desc.count(" for ")
+        title = f"{video['items'][0]['snippet']['title']} ({count} actions)"
+
     # Prepare the body
     body = {"id": video_id, "snippet": {}}
     body["snippet"]["categoryId"] = video["items"][0]["snippet"]["categoryId"]
     body["snippet"]["tags"] = video["items"][0]["snippet"]["tags"]
-    body["snippet"]["description"] = f"{video['items'][0]['snippet']['description']}\n\n{text_to_append}"
-    body["snippet"]["title"] = video["items"][0]["snippet"]["title"]
+    body["snippet"]["description"] = f"{video['items'][0]['snippet']['description']} {motion_desc}"
+    body["snippet"]["title"] = title
     body["snippet"]["defaultLanguage"] = video["items"][0]["snippet"]["defaultLanguage"]
 
     LOGGER.debug("Body is: \n%s.", body)
@@ -137,6 +153,40 @@ def append_to_description(service: googleapiclient.discovery.Resource, video_id:
     LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
     LOGGER.info("Video description appended to successfully!")
+
+
+def send_motion_email(config: configparser.SectionProxy, video_id: str, motion_desc: str) -> None:
+    """Send an email about the motion that was detected."""
+
+    LOGGER.info("Sending the motion email...")
+
+    # Create the message
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Motion detected in the birdbox!"
+    message["To"] = config["to"]
+    message["From"] = config["from"]
+    message["Date"] = email.utils.formatdate()
+    email_id = email.utils.make_msgid(domain=config["smtp_host"])
+    message["Message-ID"] = email_id
+
+    # Create and attach the text
+    text = f"We found some motion in this video: https://youtu.be/{video_id} {motion_desc}" \
+           f"\n\n———\nThis email was sent automatically by a computer program (" \
+           f"https://github.com/cmenon12/birdbox-livestream). "
+    message.attach(MIMEText(text, "plain"))
+
+    LOGGER.debug("Message is: \n%s.", message)
+
+    # Create the SMTP connection and send the email
+    with smtplib.SMTP_SSL(config["smtp_host"],
+                          int(config["smtp_port"]),
+                          context=ssl.create_default_context()) as server:
+        server.login(config["username"], config["password"])
+        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
+                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
+                        message.as_string())
+
+    LOGGER.info("Motion email sent successfully!\n")
 
 
 def main():
@@ -188,8 +238,13 @@ def main():
             for video_id in new_ids:
                 print(f"Processing {video_id}...")
                 filename = download_video(video_id)
-                motion_detected = get_motion_timestamps(filename)
-                append_to_description(service, video_id, motion_detected)
+                LOGGER.debug("%s is %s big.", filename, humanize.naturalsize(os.path.getsize(filename)))
+                motion_desc = get_motion_timestamps(filename)
+                update_motion_status(service, video_id, motion_desc)
+                os.remove(filename)
+                if "No motion" not in motion_desc:
+                    send_motion_email(email_config, video_id, motion_desc)
+                print(f"Processed {video_id} successfully!\n")
 
             # Save the new completed IDs
             if len(new_ids) != 0:
