@@ -4,3 +4,4 @@ google-auth-httplib2
 pytz
 tzlocal
 func-timeout
+yt-dlp
