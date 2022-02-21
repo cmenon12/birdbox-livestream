@@ -280,7 +280,6 @@ def main():
             for video_id in new_complete_broadcasts:
                 if video_id not in complete_broadcasts:
                     new_ids.append(video_id)
-                    complete_broadcasts.append(video_id)
             LOGGER.debug("new_ids is: %s.", new_ids)
 
             # Process them
@@ -299,13 +298,14 @@ def main():
                     send_motion_email(email_config, video_id, motion_desc)
                 print(f"Processed {video_id} successfully!\n")
 
-            # Save the new completed IDs
-            if len(new_ids) != 0:
+                # Save the ID, as soon as it's done
+                complete_broadcasts.append(video_id)
                 with open(SAVE_DATA_FILENAME, "w") as file:
                     json.dump(complete_broadcasts, file)
                     LOGGER.debug(
                         "Saved the save data to %s successfully.",
                         SAVE_DATA_FILENAME)
+                    LOGGER.debug("Saved save data is %s", complete_broadcasts)
 
             # Wait before repeating
             time.sleep(15 * 60)
@@ -324,7 +324,7 @@ if __name__ == "__main__":
     Path("./logs").mkdir(parents=True, exist_ok=True)
     log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
     log_format = "%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s"
-    log_handler = logging.FileHandler(f"./logs/{log_filename}", mode="a")
+    log_handler = logging.FileHandler(f"./logs/{log_filename}", mode="a", encoding="utf-8")
     log_handler.setFormatter(logging.Formatter(log_format))
     logging.basicConfig(
         format=log_format,

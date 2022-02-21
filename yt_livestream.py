@@ -795,7 +795,7 @@ if __name__ == "__main__":
         handlers=[
             logging.FileHandler(
                 f"./logs/{log_filename}",
-                mode="a")])
+                mode="a", encoding="utf-8")])
     LOGGER = logging.getLogger(__name__)
 
     # Run it
