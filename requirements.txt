@@ -9,3 +9,4 @@ dvr-scan
 opencv-python
 progress_bar
 humanize
+Send2Trash

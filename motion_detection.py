@@ -18,6 +18,7 @@ from typing import Tuple, List
 import dvr_scan
 import googleapiclient
 import humanize as humanize
+import send2trash
 import yt_dlp
 from dvr_scan.timecode import FrameTimecode
 from googleapiclient.discovery import build
@@ -97,8 +98,11 @@ def download_video(video_id: str) -> str:
         "logger": LOGGER,
         "format": "best[height=144]+[ext=mp4]",
         "verbose": True,
-        "final_ext": "mp4"
+        "final_ext": "mp4",
+        "throttledratelimit": 10000,
+        "concurrent_fragment_downloads": 2
     }
+    yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download(f"https://youtu.be/{video_id}")
         filename = ydl.extract_info(
@@ -293,7 +297,13 @@ def main():
                         os.path.getsize(filename)))
                 motion_desc = get_motion_timestamps(filename)
                 update_motion_status(service, video_id, motion_desc)
-                os.remove(filename)
+                try:
+                    send2trash.send2trash(filename)
+                except send2trash.TrashPermissionError as error:
+                    LOGGER.exception("Could not delete %s!", filename)
+                    print(f"Could not delete {filename}!")
+                    print(str(error))
+                    print(traceback.format_exc())
                 if "No motion" not in motion_desc:
                     send_motion_email(email_config, video_id, motion_desc)
                 print(f"Processed {video_id} successfully!\n")
