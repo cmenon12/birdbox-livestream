@@ -646,7 +646,6 @@ def send_error_email(config: configparser.SectionProxy, trace: str,
     :type trace: str
     :param filename: the filename of the log file to attach
     :type filename: str
-    :return:
     """
 
     LOGGER.info("Sending the error email...")
@@ -796,7 +795,7 @@ if __name__ == "__main__":
         handlers=[
             logging.FileHandler(
                 f"./logs/{log_filename}",
-                mode="a")])
+                mode="a", encoding="utf-8")])
     LOGGER = logging.getLogger(__name__)
 
     # Run it

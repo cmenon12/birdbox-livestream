@@ -4,3 +4,9 @@ google-auth-httplib2
 pytz
 tzlocal
 func-timeout
+yt-dlp
+dvr-scan
+opencv-python
+progress_bar
+humanize
+Send2Trash
