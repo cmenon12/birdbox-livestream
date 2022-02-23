@@ -96,11 +96,9 @@ def download_video(video_id: str) -> str:
     LOGGER.info(locals())
     ydl_opts = {
         "logger": LOGGER,
-        "format": "best[height=144]+[ext=mp4]",
-        "verbose": True,
+        "format": "160",
         "final_ext": "mp4",
-        "throttledratelimit": 10000,
-        "concurrent_fragment_downloads": 2
+        "throttledratelimit": 10000
     }
     yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -297,15 +295,16 @@ def main():
                         os.path.getsize(filename)))
                 motion_desc = get_motion_timestamps(filename)
                 update_motion_status(service, video_id, motion_desc)
-                try:
-                    send2trash.send2trash(filename)
-                except send2trash.TrashPermissionError as error:
-                    LOGGER.exception("Could not delete %s!", filename)
-                    print(f"Could not delete {filename}!")
-                    print(str(error))
-                    print(traceback.format_exc())
                 if "No motion" not in motion_desc:
                     send_motion_email(email_config, video_id, motion_desc)
+                else:
+                    try:
+                        send2trash.send2trash(filename)
+                    except send2trash.TrashPermissionError as error:
+                        LOGGER.exception("Could not delete %s!", filename)
+                        print(f"Could not delete {filename}!")
+                        print(str(error))
+                        print(traceback.format_exc())
                 print(f"Processed {video_id} successfully!\n")
 
                 # Save the ID, as soon as it's done
