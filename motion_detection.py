@@ -111,7 +111,7 @@ def download_video(video_id: str) -> str:
     return filename
 
 
-def get_motion_timestamps(filename: str) -> str:
+def get_motion_timestamps(filename: str, roi: List[int]) -> str:
     """Detect motion and output a description of when it occurs.
 
     :param filename: the video file to search
@@ -127,7 +127,12 @@ def get_motion_timestamps(filename: str) -> str:
     scan.set_event_params(
         min_event_len=25 * MIN_MOTION_DURATION,
         time_pre_event="1s",
-        time_post_event="0s")
+        time_post_event="0s"
+    )
+    scan.set_detection_params(
+        roi=None,
+        threshold=0.4
+    )
     result: List[Tuple[FrameTimecode, FrameTimecode,
                        FrameTimecode]] = scan.scan_motion()
     if len(result) == 0:
@@ -255,7 +260,7 @@ def main():
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
     yt_config = parser["YouTubeLivestream"]
-    main_config = parser["yt_livestream"]
+    main_config = parser["motion_detection"]
     email_config = parser["email"]
 
     try:
@@ -293,7 +298,8 @@ def main():
                     filename,
                     humanize.naturalsize(
                         os.path.getsize(filename)))
-                motion_desc = get_motion_timestamps(filename)
+                roi = json.loads(main_config["roi"])
+                motion_desc = get_motion_timestamps(filename, roi)
                 update_motion_status(service, video_id, motion_desc)
                 if "No motion" not in motion_desc:
                     send_motion_email(email_config, video_id, motion_desc)

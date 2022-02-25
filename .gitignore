@@ -137,4 +137,7 @@ config.ini
 /.idea
 *.3gp
 *.mp4
+*.part
+*.avi
+*.ytdl
 save_data.json
