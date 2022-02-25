@@ -125,7 +125,7 @@ def get_motion_timestamps(filename: str, roi: List[int]) -> str:
     output = ""
     scan = dvr_scan.scanner.ScanContext([filename])
     scan.set_event_params(
-        min_event_len=25 * MIN_MOTION_DURATION,
+        min_event_len=30 * MIN_MOTION_DURATION,
         time_pre_event="1s",
         time_post_event="0s"
     )
