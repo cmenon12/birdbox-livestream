@@ -94,21 +94,35 @@ def download_video(video_id: str) -> str:
 
     LOGGER.info("Downloading video...")
     LOGGER.info(locals())
-    ydl_opts = {
-        "logger": LOGGER,
-        "format": "160",
-        "final_ext": "mp4",
-        "throttledratelimit": 10000
-    }
-    yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download(f"https://youtu.be/{video_id}")
-        filename = ydl.extract_info(
-            f"https://youtu.be/{video_id}")["requested_downloads"][0]["_filename"]
-        LOGGER.debug("Video filename is %s.", filename)
 
-    LOGGER.info("Video downloaded successfully!")
-    return filename
+    count = 0
+    limit = 5
+    while count < limit:
+        try:
+            ydl_opts = {
+                "format": "160",
+                "final_ext": "mp4",
+                "throttledratelimit": 10000
+            }
+            yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download(f"https://youtu.be/{video_id}")
+                filename = ydl.extract_info(
+                    f"https://youtu.be/{video_id}")["requested_downloads"][0]["_filename"]
+            LOGGER.debug("Video filename is %s.", filename)
+            LOGGER.info("Video downloaded successfully!")
+            return filename
+        except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
+            LOGGER.exception(
+                "There was an error with downloading the video!")
+            count += 1
+            if count >= limit:
+                raise yt_dlp.utils.YoutubeDLError from error
+            LOGGER.debug("Continuing in 5 mins...")
+            time.sleep(300)
+
+    # Catch-all
+    return Exception("Download failed after 5 retries.")
 
 
 def get_motion_timestamps(filename: str, roi: List[int], threshold: float) -> str:
