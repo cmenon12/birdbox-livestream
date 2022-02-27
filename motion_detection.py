@@ -94,35 +94,19 @@ def download_video(video_id: str) -> str:
 
     LOGGER.info("Downloading video...")
     LOGGER.info(locals())
-
-    count = 0
-    limit = 5
-    while count < limit:
-        try:
-            ydl_opts = {
-                "format": "160",
-                "final_ext": "mp4",
-                "throttledratelimit": 10000
-            }
-            yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download(f"https://youtu.be/{video_id}")
-                filename = ydl.extract_info(
-                    f"https://youtu.be/{video_id}")["requested_downloads"][0]["_filename"]
-            LOGGER.debug("Video filename is %s.", filename)
-            LOGGER.info("Video downloaded successfully!")
-            return filename
-        except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
-            LOGGER.exception(
-                "There was an error with downloading the video!")
-            count += 1
-            if count >= limit:
-                raise yt_dlp.utils.YoutubeDLError from error
-            LOGGER.debug("Continuing in 5 mins...")
-            time.sleep(300)
-
-    # Catch-all
-    return Exception("Download failed after 5 retries.")
+    ydl_opts = {
+        "format": "160",
+        "final_ext": "mp4",
+        "throttledratelimit": 10000
+    }
+    yt_dlp.utils.std_headers.update({"Referer": "https://www.google.com"})
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download(f"https://youtu.be/{video_id}")
+        filename = ydl.extract_info(
+            f"https://youtu.be/{video_id}")["requested_downloads"][0]["_filename"]
+    LOGGER.debug("Video filename is %s.", filename)
+    LOGGER.info("Video downloaded successfully!")
+    return filename
 
 
 def get_motion_timestamps(filename: str) -> str:
@@ -301,34 +285,48 @@ def main():
             # Process them
             for video_id in new_ids:
                 print(f"Processing {video_id}...")
-                filename = download_video(video_id)
-                LOGGER.debug(
-                    "%s is %s big.",
-                    filename,
-                    humanize.naturalsize(
-                        os.path.getsize(filename)))
-                motion_desc = get_motion_timestamps(filename)
-                update_motion_status(service, video_id, motion_desc)
-                if "No motion" not in motion_desc:
-                    send_motion_email(email_config, video_id, motion_desc)
-                else:
-                    try:
-                        send2trash.send2trash(filename)
-                    except send2trash.TrashPermissionError as error:
-                        LOGGER.exception("Could not delete %s!", filename)
-                        print(f"Could not delete {filename}!")
-                        print(str(error))
-                        print(traceback.format_exc())
-                print(f"Processed {video_id} successfully!\n")
 
-                # Save the ID, as soon as it's done
-                complete_broadcasts.append(video_id)
-                with open(SAVE_DATA_FILENAME, "w") as file:
-                    json.dump(complete_broadcasts, file)
+                # Try to download the video, but just skip for now if it fails
+                try:
+                    filename = download_video(video_id)
+                except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
+                    LOGGER.exception(
+                        "There was an error with downloading the video!")
+                    print("There was an error with downloading the video!")
+                    print(f"{traceback.format_exc()}\n")
+                    continue
+                else:
                     LOGGER.debug(
-                        "Saved the save data to %s successfully.",
-                        SAVE_DATA_FILENAME)
-                    LOGGER.debug("Saved save data is %s", complete_broadcasts)
+                        "%s is %s big.",
+                        filename,
+                        humanize.naturalsize(
+                            os.path.getsize(filename)))
+
+                    # Run motion detection
+                    motion_desc = get_motion_timestamps(filename)
+                    update_motion_status(service, video_id, motion_desc)
+                    if "No motion" not in motion_desc:
+                        send_motion_email(email_config, video_id, motion_desc)
+                    else:
+                        try:
+                            send2trash.send2trash(filename)
+                        except send2trash.TrashPermissionError as error:
+                            LOGGER.exception("Could not delete %s!", filename)
+                            print(f"Could not delete {filename}!")
+                            print(str(error))
+                            print(traceback.format_exc())
+                    print(f"Processed {video_id} successfully!\n")
+
+                    # Save the ID, as soon as it's done
+                    complete_broadcasts.append(video_id)
+                    with open(SAVE_DATA_FILENAME, "w") as file:
+                        json.dump(complete_broadcasts, file)
+                        LOGGER.debug(
+                            "Saved the save data to %s successfully.",
+                            SAVE_DATA_FILENAME)
+                        LOGGER.debug(
+                            "Saved save data is %s",
+                            complete_broadcasts)
 
             # Wait before repeating
             time.sleep(15 * 60)
@@ -347,7 +345,8 @@ if __name__ == "__main__":
     Path("./logs").mkdir(parents=True, exist_ok=True)
     log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
     log_format = "%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s"
-    log_handler = logging.FileHandler(f"./logs/{log_filename}", mode="a", encoding="utf-8")
+    log_handler = logging.FileHandler(
+        f"./logs/{log_filename}", mode="a", encoding="utf-8")
     log_handler.setFormatter(logging.Formatter(log_format))
     logging.basicConfig(
         format=log_format,
