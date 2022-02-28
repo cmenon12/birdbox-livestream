@@ -184,7 +184,7 @@ def update_motion_status(
     # Prepare the body
     body = {"id": video_id, "snippet": {}}
     body["snippet"]["categoryId"] = video["items"][0]["snippet"]["categoryId"]
-    body["snippet"]["tags"] = video["items"][0]["snippet"]["tags"]
+    body["snippet"]["tags"] = video["items"][0]["snippet"].get("tags", [])
     body["snippet"]["description"] = f"{video['items'][0]['snippet']['description']} {motion_desc}"
     body["snippet"]["title"] = title
     body["snippet"]["defaultLanguage"] = video["items"][0]["snippet"]["defaultLanguage"]
