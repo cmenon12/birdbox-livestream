@@ -79,8 +79,10 @@ class YouTube:
 
         self.config = config
 
-    def get_service(self, auth_type: AuthorizationTypes = AuthorizationTypes.PUSHBULLET,
-                    token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
+    def get_service(
+            self,
+            auth_type: AuthorizationTypes = AuthorizationTypes.PUSHBULLET,
+            token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
 
         :return: the YouTube API service (a Resource)
@@ -110,7 +112,8 @@ class YouTube:
                     f"Please visit this URL to authorize this application: {auth_url}")
                 if auth_type is AuthorizationTypes.PUSHBULLET and str(
                         self.config["pushbullet_access_token"]).lower() != "false":
-                    code = self.pushbullet_request_response("YT API Authorization", auth_url)
+                    code = self.pushbullet_request_response(
+                        "YT API Authorization", auth_url)
                 else:
                     code = input("Enter the authorization code: ")
                 flow.fetch_token(code=code)
@@ -206,7 +209,8 @@ class YouTube:
             pb = Pushbullet(self.config["pushbullet_access_token"])
             LOGGER.debug("Authenticated with Pushbullet.")
         except InvalidKeyError:
-            LOGGER.exception("InvalidKeyError raised when authenticating Pushbullet.")
+            LOGGER.exception(
+                "InvalidKeyError raised when authenticating Pushbullet.")
             traceback.print_exc()
 
         # If successfully authenticated then attempt to push
@@ -215,7 +219,8 @@ class YouTube:
 
                 # Push to the device(s)
                 if str(self.config["pushbullet_device"]).lower() == "false":
-                    pb.get_device(str(self.config["pushbullet_device"])).push_link(title, url)
+                    pb.get_device(str(self.config["pushbullet_device"])).push_link(
+                        title, url)
                     LOGGER.debug("Pushed URL %s with title %s to all devices.",
                                  url, title)
                 else:
@@ -234,7 +239,8 @@ class YouTube:
                     time.sleep(5)
 
             except InvalidKeyError:
-                LOGGER.exception("InvalidKeyError raised when using Pushbullet.")
+                LOGGER.exception(
+                    "InvalidKeyError raised when using Pushbullet.")
                 traceback.print_exc()
             except PushError:
                 LOGGER.exception("PushError raised when using Pushbullet.")
@@ -354,8 +360,10 @@ class YouTubeLivestream(YouTube):
         # Round the end time to the nearest 6 hours
         end_time = start_time + timedelta(minutes=duration_mins)
         LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
-        new_hour = 0 if round(end_time.hour / 6) * 6 >= 24 else round(end_time.hour / 6) * 6
-        new_hour = 0 if new_hour + (6 * (end_time.minute // 30)) >= 24 else new_hour + (6 * (end_time.minute // 30))
+        new_hour = 0 if round(end_time.hour / 6) * \
+                        6 >= 24 else round(end_time.hour / 6) * 6
+        new_hour = 0 if new_hour + \
+                        (6 * (end_time.minute // 30)) >= 24 else new_hour + (6 * (end_time.minute // 30))
         end_time = end_time.replace(second=0, microsecond=0, minute=0,
                                     hour=new_hour)
         LOGGER.debug(
@@ -426,11 +434,11 @@ class YouTubeLivestream(YouTube):
 
         # Bind the broadcast to the stream
         LOGGER.debug("Binding the broadcast to the stream...")
-        broadcast = self.execute_request(self.get_service().liveBroadcasts().bind(
-            id=self.scheduled_broadcasts[start_time]["id"],
-            part="id,snippet,contentDetails,status",
-            streamId=self.get_stream()["id"]
-        ))
+        broadcast = self.execute_request(
+            self.get_service().liveBroadcasts().bind(
+                id=self.scheduled_broadcasts[start_time]["id"],
+                part="id,snippet,contentDetails,status",
+                streamId=self.get_stream()["id"]))
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         limit = 60
@@ -650,13 +658,15 @@ class YouTubeLivestream(YouTube):
             next_page_token = ""
             all_playlists = []
             while next_page_token is not None:
-                response = self.execute_request(self.get_service().playlists().list(
-                    part="id,snippet",
-                    mine=True,
-                    maxResults=50,
-                    pageToken=next_page_token
-                ))
-                LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
+                response = self.execute_request(
+                    self.get_service().playlists().list(
+                        part="id,snippet",
+                        mine=True,
+                        maxResults=50,
+                        pageToken=next_page_token))
+                LOGGER.debug(
+                    "Response is: \n%s.", json.dumps(
+                        response, indent=4))
                 all_playlists.extend(response["items"])
                 next_page_token = response.get("nextPageToken")
             LOGGER.debug(
@@ -863,7 +873,8 @@ if __name__ == "__main__":
         handlers=[
             logging.FileHandler(
                 f"./logs/{log_filename}",
-                mode="a", encoding="utf-8")])
+                mode="a",
+                encoding="utf-8")])
     LOGGER = logging.getLogger(__name__)
 
     # Run it

@@ -109,7 +109,10 @@ def download_video(video_id: str) -> str:
     return filename
 
 
-def get_motion_timestamps(filename: str, roi: List[int], threshold: float) -> str:
+def get_motion_timestamps(
+        filename: str,
+        roi: List[int],
+        threshold: float) -> str:
     """Detect motion and output a description of when it occurs.
 
     :param filename: the video file to search
@@ -316,8 +319,10 @@ def main():
                             os.path.getsize(filename)))
 
                     # Run motion detection
-                    motion_desc = get_motion_timestamps(filename, roi, threshold)
-                    update_motion_status(yt.get_service(), video_id, motion_desc)
+                    motion_desc = get_motion_timestamps(
+                        filename, roi, threshold)
+                    update_motion_status(
+                        yt.get_service(), video_id, motion_desc)
                     if "No motion" not in motion_desc:
                         send_motion_email(email_config, video_id, motion_desc)
                     else:
@@ -358,7 +363,8 @@ if __name__ == "__main__":
     Path("./logs").mkdir(parents=True, exist_ok=True)
     log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
     log_format = "%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s"
-    log_handler = logging.FileHandler(f"./logs/{log_filename}", mode="a", encoding="utf-8")
+    log_handler = logging.FileHandler(
+        f"./logs/{log_filename}", mode="a", encoding="utf-8")
     log_handler.setFormatter(logging.Formatter(log_format))
     logging.basicConfig(
         format=log_format,
