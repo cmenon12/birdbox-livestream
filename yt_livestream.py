@@ -89,7 +89,6 @@ class YouTubeLivestream:
     @staticmethod
     def get_service(open_browser: Optional[Union[bool, str]] = False,
                     token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
-
         """Authenticates the YouTube API, returning the service.
 
         :return: the YouTube API service (a Resource)
@@ -123,39 +122,31 @@ class YouTubeLivestream:
             print("Your browser should open automatically.")
             return flow.run_local_server(port=0)
 
-        credentials = None
-
         # Attempt to access pre-existing credentials
         if os.path.exists(token_file):
             with open(token_file, "rb") as token:
                 LOGGER.debug("Loading credentials from %s.", token_file)
                 credentials = pickle.load(token)
 
-        # If there are no (valid) credentials available let the user log in
-        LOGGER.debug("Credentials are: %s.", str(credentials))
-        if not credentials or not credentials.valid:
-            LOGGER.debug("There are no credentials or they are invalid.")
-            if credentials and credentials.refresh_token:
-                try:
-                    credentials.refresh(Request())
-                except RefreshError:
-                    os.remove(token_file)
-
-                    try:
-                        credentials = authorize_in_browser()
-                    except FunctionTimedOut as error:
-                        raise FunctionTimedOut(
-                            f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
-            else:
+            # Try to refresh the credentials
+            LOGGER.debug("Credentials are: %s.", str(credentials))
+            try:
+                credentials.refresh(Request())
+            except RefreshError:
+                os.remove(token_file)
                 try:
                     credentials = authorize_in_browser()
                 except FunctionTimedOut as error:
                     raise FunctionTimedOut(
                         f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
 
-        # If we do have valid credentials then refresh them
+        # If they don't exist then get some new ones
         else:
-            credentials.refresh(Request())
+            try:
+                credentials = authorize_in_browser()
+            except FunctionTimedOut as error:
+                raise FunctionTimedOut(
+                    f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
 
         # Save the credentials for the next run
         with open(token_file, "wb") as token:
