@@ -44,8 +44,8 @@ __license__ = "gpl-3.0"
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
 
-# How long to wait for authorization (in seconds)
-AUTHORIZATION_TIMEOUT = 600
+# How long to wait for authorisation (in seconds)
+AUTHORISATION_TIMEOUT = 600
 
 # File with the OAuth client secret
 CLIENT_SECRET_FILE = "client_secret.json"
@@ -60,7 +60,7 @@ TOKEN_PICKLE_FILE = "token.pickle"
 TIMEZONE = timezone("Europe/London")
 
 
-class AuthorizationTypes(Enum):
+class AuthorisationTypes(Enum):
     """The possible types for API authorisation"""
 
     SSH = auto()
@@ -81,7 +81,7 @@ class YouTube:
 
     def get_service(
             self,
-            auth_type: AuthorizationTypes = AuthorizationTypes.PUSHBULLET,
+            auth_type: AuthorisationTypes = AuthorisationTypes.PUSHBULLET,
             token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
 
@@ -91,32 +91,32 @@ class YouTube:
 
         LOGGER.info("Authorising service...")
 
-        @func_set_timeout(AUTHORIZATION_TIMEOUT)
-        def authorize():
-            """Authorize the request."""
+        @func_set_timeout(AUTHORISATION_TIMEOUT)
+        def authorise():
+            """Authorise the request."""
 
-            # Open the browser for the user to authorize it
-            if auth_type is AuthorizationTypes.BROWSER:
+            # Open the browser for the user to authorise it
+            if auth_type is AuthorisationTypes.BROWSER:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     CLIENT_SECRET_FILE, SCOPES)
                 print("Your browser should open automatically.")
                 return flow.run_local_server(port=0)
 
-            # Tell the user to authorize it themselves
+            # Tell the user to authorise it themselves
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     CLIENT_SECRET_FILE, SCOPES,
                     redirect_uri="urn:ietf:wg:oauth:2.0:oob")
-                auth_url, _ = flow.authorization_url(prompt="consent")
+                auth_url, _ = flow.authorisation_url(prompt="consent")
                 print(
-                    f"Please visit this URL to authorize this application: {auth_url}")
-                if auth_type is AuthorizationTypes.PUSHBULLET and str(
+                    f"Please visit this URL to authorise this application: {auth_url}")
+                if auth_type is AuthorisationTypes.PUSHBULLET and str(
                         self.config["pushbullet_access_token"]).lower() != "false":
                     print("Requesting via Pushbullet...")
                     code = self.pushbullet_request_response(
-                        "YT API Authorization", auth_url)
+                        "YT API Authorisation", auth_url)
                 else:
-                    code = input("Enter the authorization code: ")
+                    code = input("Enter the authorisation code: ")
                 flow.fetch_token(code=code)
                 return flow.credentials
 
@@ -133,18 +133,18 @@ class YouTube:
             except RefreshError:
                 os.remove(token_file)
                 try:
-                    credentials = authorize()
+                    credentials = authorise()
                 except FunctionTimedOut as error:
                     raise FunctionTimedOut(
-                        f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
+                        f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google APIs.") from error
 
         # If they don't exist then get some new ones
         else:
             try:
-                credentials = authorize()
+                credentials = authorise()
             except FunctionTimedOut as error:
                 raise FunctionTimedOut(
-                    f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
+                    f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google APIs.") from error
 
         # Save the credentials for the next run
         with open(token_file, "wb") as token:
@@ -188,7 +188,7 @@ class YouTube:
         # Catch-all
         return Exception("Request failed after 5 retries.")
 
-    @func_set_timeout(AUTHORIZATION_TIMEOUT)
+    @func_set_timeout(AUTHORISATION_TIMEOUT)
     def pushbullet_request_response(self, title: str, url: str) -> str:
         """Pushes the URL to Pushbullet and awaits a response
 

@@ -35,7 +35,7 @@ def main():
     if os.path.exists(NEW_TOKEN_PICKLE_FILE):
         os.remove(NEW_TOKEN_PICKLE_FILE)
     yt = yt_livestream.YouTube(yt_config)
-    yt.get_service(auth_type=yt_livestream.AuthorizationTypes.SSH, token_file=NEW_TOKEN_PICKLE_FILE)
+    yt.get_service(auth_type=yt_livestream.AuthorisationTypes.SSH, token_file=NEW_TOKEN_PICKLE_FILE)
 
     # Replace the old file
     if os.path.exists(OLD_TOKEN_PICKLE_FILE):
