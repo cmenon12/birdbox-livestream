@@ -175,6 +175,55 @@ class YouTube:
         # Catch-all
         return Exception("Request failed after 5 retries.")
 
+    def push_url(self, title: str, url: str):
+        """Pushes the URL to Pushbullet using the config.
+
+        This pushes the given URL to Pushbullet using the config. It will
+        catch any Pushbullet-associated exceptions.
+
+        :param title: the title of the URL
+        :type title: str
+        :param url: the URL to push
+        :type url: str
+        """
+
+        # Stop if the user doesn't want to use Pushbullet
+        if str(self.config["pushbullet_access_token"]).lower() == "false":
+            return
+
+        # Attempt to authenticate
+        try:
+            LOGGER.info("Authenticating with Pushbullet")
+            pb = Pushbullet(self.self.config["pushbullet_access_token"])
+            LOGGER.info("Authenticated with Pushbullet.")
+        except InvalidKeyError:
+            LOGGER.exception("InvalidKeyError raised when authenticating Pushbullet.")
+            print("InvalidKeyError raised when authenticating Pushbullet.")
+            traceback.print_exc()
+
+        # If successfully authenticated then attempt to push
+        else:
+            try:
+                if str(self.config["pushbullet_device"]).lower() == "false":
+                    pb.get_device(str(self.config["pushbullet_device"])).push_link(title, url)
+                    LOGGER.info("Pushed URL %s with title %s to all devices.",
+                                url, title)
+                    print("The URL has been successfully pushed to all devices.")
+                else:
+                    pb.push_link(title, url)
+                    LOGGER.info("Pushed URL %s with title %s to device %s.",
+                                url, title, self.config["pushbullet_device"])
+                    print("The URL has been successfully pushed to %s." %
+                          self.config["pushbullet_device"])
+            except InvalidKeyError:
+                LOGGER.exception("InvalidKeyError raised when pushing to Pushbullet.")
+                print("InvalidKeyError raised when pushing to Pushbullet.")
+                traceback.print_exc()
+            except PushError:
+                LOGGER.exception("PushError raised when pushing to Pushbullet.")
+                print("PushError raised when pushing to Pushbullet.")
+                traceback.print_exc()
+
 
 class BroadcastTypes(Enum):
     """The possible types for a broadcast, including an 'all' type."""
