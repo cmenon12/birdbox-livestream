@@ -34,6 +34,7 @@ from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from pushbullet import InvalidKeyError, PushError, Pushbullet
 from pytz import timezone
 
 __author__ = "Christopher Menon"
@@ -60,6 +61,11 @@ TIMEZONE = timezone("Europe/London")
 
 
 class YouTube:
+    """Represents the YouTube API.
+
+    :param config: the config to use
+    :type config: configparser.SectionProxy
+    """
 
     def __init__(self, config: configparser.SectionProxy):
 
