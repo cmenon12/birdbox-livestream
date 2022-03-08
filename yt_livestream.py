@@ -59,34 +59,13 @@ TOKEN_PICKLE_FILE = "token.pickle"
 TIMEZONE = timezone("Europe/London")
 
 
-class BroadcastTypes(Enum):
-    """The possible types for a broadcast, including an 'all' type."""
-
-    SCHEDULED = auto()
-    LIVE = auto()
-    FINISHED = auto()
-    ALL = auto()
-
-
-class YouTubeLivestream:
-    """Represents a single continuous YouTube livestream.
-
-    :param config: the config to use
-    :type config: configparser.SectionProxy
-    """
+class YouTube:
 
     def __init__(self, config: configparser.SectionProxy):
 
         self.config = config
 
-        self.live_stream = None
-        self.week_playlist = None
-        self.scheduled_broadcasts = {}
-        self.finished_broadcasts = {}
-        self.live_broadcasts = {}
-
-    @staticmethod
-    def get_service(open_browser: Optional[Union[bool, str]] = False,
+    def get_service(self, open_browser: Optional[Union[bool, str]] = False,
                     token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
 
@@ -189,6 +168,33 @@ class YouTubeLivestream:
 
         # Catch-all
         return Exception("Request failed after 5 retries.")
+
+
+class BroadcastTypes(Enum):
+    """The possible types for a broadcast, including an 'all' type."""
+
+    SCHEDULED = auto()
+    LIVE = auto()
+    FINISHED = auto()
+    ALL = auto()
+
+
+class YouTubeLivestream(YouTube):
+    """Represents a single continuous YouTube livestream.
+
+    :param config: the config to use
+    :type config: configparser.SectionProxy
+    """
+
+    def __init__(self, config: configparser.SectionProxy):
+
+        self.config = config
+
+        self.live_stream = None
+        self.week_playlist = None
+        self.scheduled_broadcasts = {}
+        self.finished_broadcasts = {}
+        self.live_broadcasts = {}
 
     def get_stream(self) -> dict:
         """Gets the live_stream, creating it if needed.
