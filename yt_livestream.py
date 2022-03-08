@@ -93,7 +93,7 @@ class YouTube:
                 auth_url, _ = flow.authorization_url(prompt="consent")
                 print(
                     f"Please visit this URL to authorize this application: {auth_url}")
-                print("The URL has been copied to the clipboard.")
+                self.push_url("YouTube Authorisation URL", auth_url)
 
                 # Get the authorization code
                 code = input("Enter the authorization code: ")
