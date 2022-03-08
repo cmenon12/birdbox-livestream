@@ -112,6 +112,7 @@ class YouTube:
                     f"Please visit this URL to authorize this application: {auth_url}")
                 if auth_type is AuthorizationTypes.PUSHBULLET and str(
                         self.config["pushbullet_access_token"]).lower() != "false":
+                    print("Requesting via Pushbullet...")
                     code = self.pushbullet_request_response(
                         "YT API Authorization", auth_url)
                 else:
@@ -147,7 +148,6 @@ class YouTube:
 
         # Save the credentials for the next run
         with open(token_file, "wb") as token:
-            print()
             pickle.dump(credentials, token)
         LOGGER.debug("Credentials saved to %s successfully.",
                      token_file)
