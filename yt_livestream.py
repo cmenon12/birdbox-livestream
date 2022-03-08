@@ -76,7 +76,6 @@ class YouTubeLivestream:
     """
 
     def __init__(self, config: configparser.SectionProxy):
-        self.service = YouTubeLivestream.get_service()
 
         self.config = config
 
@@ -208,7 +207,7 @@ class YouTubeLivestream:
 
         # Create a new livestream
         LOGGER.debug("Creating a new stream...")
-        stream = self.execute_request(self.service.liveStreams().insert(
+        stream = self.execute_request(self.get_service().liveStreams().insert(
             part="snippet,cdn,contentDetails,id,status",
             body={
                 "cdn": {
@@ -291,7 +290,7 @@ class YouTubeLivestream:
 
         # Schedule a new broadcast
         LOGGER.debug("Scheduling a new broadcast...")
-        broadcast = self.execute_request(self.service.liveBroadcasts().insert(
+        broadcast = self.execute_request(self.get_service().liveBroadcasts().insert(
             part="id,snippet,contentDetails,status",
             body={
                 "contentDetails": {
@@ -349,7 +348,7 @@ class YouTubeLivestream:
 
         # Bind the broadcast to the stream
         LOGGER.debug("Binding the broadcast to the stream...")
-        broadcast = self.execute_request(self.service.liveBroadcasts().bind(
+        broadcast = self.execute_request(self.get_service().liveBroadcasts().bind(
             id=self.scheduled_broadcasts[start_time]["id"],
             part="id,snippet,contentDetails,status",
             streamId=self.get_stream()["id"]
@@ -370,7 +369,7 @@ class YouTubeLivestream:
 
         # # Get the broadcast
         # LOGGER.debug("Getting the broadcast...")
-        # broadcast_temp = self.execute_request(self.service.liveBroadcasts().list(
+        # broadcast_temp = self.execute_request(self.get_service().liveBroadcasts().list(
         #     id=broadcast["id"],
         #     part="id,snippet,contentDetails,status"
         # ))
@@ -380,7 +379,7 @@ class YouTubeLivestream:
         LOGGER.debug("Transitioning the broadcastStatus to live...")
         try:
             broadcast = self.execute_request(
-                self.service.liveBroadcasts().transition(
+                self.get_service().liveBroadcasts().transition(
                     broadcastStatus="live",
                     id=broadcast["id"],
                     part="id,snippet,contentDetails,status"))
@@ -443,7 +442,7 @@ class YouTubeLivestream:
         LOGGER.debug("Transitioning the broadcastStatus to complete...")
         try:
             broadcast = self.execute_request(
-                self.service.liveBroadcasts().transition(
+                self.get_service().liveBroadcasts().transition(
                     broadcastStatus="complete",
                     id=self.live_broadcasts[start_time]["id"],
                     part="id,snippet,contentDetails,status"))
@@ -495,7 +494,7 @@ class YouTubeLivestream:
         :rtype: dict
         """
 
-        stream = self.execute_request(self.service.liveStreams().list(
+        stream = self.execute_request(self.get_service().liveStreams().list(
             id=self.get_stream()["id"],
             part="status"
         ))
@@ -517,7 +516,7 @@ class YouTubeLivestream:
         LOGGER.info(locals())
 
         # Get the existing snippet details
-        video = self.execute_request(self.service.videos().list(
+        video = self.execute_request(self.get_service().videos().list(
             id=video_id,
             part="id,snippet"
         ))
@@ -536,7 +535,7 @@ class YouTubeLivestream:
 
         # Update it
         LOGGER.debug("Updating the video metadata...")
-        video = self.execute_request(self.service.videos().update(
+        video = self.execute_request(self.get_service().videos().update(
             part="id,snippet",
             body=body
         ))
@@ -573,7 +572,7 @@ class YouTubeLivestream:
             next_page_token = ""
             all_playlists = []
             while next_page_token is not None:
-                response = self.execute_request(self.service.playlists().list(
+                response = self.execute_request(self.get_service().playlists().list(
                     part="id,snippet",
                     mine=True,
                     maxResults=50,
@@ -599,7 +598,7 @@ class YouTubeLivestream:
                 LOGGER.debug("Creating a new playlist...")
                 description = f"This playlist has videos of the birdbox from {(start_time - timedelta(days=start_time.weekday())).strftime('%a %d %B')} to {(start_time - timedelta(days=start_time.weekday() - 6)).strftime('%a %d %B')}. "
                 self.week_playlist = self.execute_request(
-                    self.service.playlists().insert(
+                    self.get_service().playlists().insert(
                         part="id,snippet,status", body={
                             "snippet": {
                                 "title": playlist_title, "description": description}, "status": {
@@ -610,7 +609,7 @@ class YouTubeLivestream:
 
         # Add the video to the playlist
         playlist_item = self.execute_request(
-            self.service.playlistItems().insert(
+            self.get_service().playlistItems().insert(
                 part="id,snippet",
                 body={
                     "snippet": {

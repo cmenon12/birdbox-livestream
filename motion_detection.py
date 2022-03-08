@@ -269,8 +269,8 @@ def main():
 
     try:
 
-        # Get access to the YouTube API
-        service = yt_livestream.YouTubeLivestream.get_service()
+        # Get initial access to the YouTube API
+        yt_livestream.YouTubeLivestream.get_service()
 
         # Try and load the list of completed IDs
         try:
@@ -287,7 +287,7 @@ def main():
 
             # Find out which videos need processing
             new_ids = []
-            new_complete_broadcasts = get_complete_broadcasts(service)
+            new_complete_broadcasts = get_complete_broadcasts(yt_livestream.YouTubeLivestream.get_service())
             for video_id in new_complete_broadcasts:
                 if video_id not in complete_broadcasts:
                     new_ids.append(video_id)
@@ -315,7 +315,7 @@ def main():
 
                     # Run motion detection
                     motion_desc = get_motion_timestamps(filename, roi, threshold)
-                    update_motion_status(service, video_id, motion_desc)
+                    update_motion_status(yt_livestream.YouTubeLivestream.get_service(), video_id, motion_desc)
                     if "No motion" not in motion_desc:
                         send_motion_email(email_config, video_id, motion_desc)
                     else:
