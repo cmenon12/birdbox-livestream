@@ -26,7 +26,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional, Union, Any
+from typing import Optional, Any
 
 import googleapiclient
 from func_timeout import func_set_timeout, FunctionTimedOut
@@ -45,7 +45,7 @@ __license__ = "gpl-3.0"
 CONFIG_FILENAME = "config.ini"
 
 # How long to wait for authorization (in seconds)
-AUTHORIZATION_TIMEOUT = 300
+AUTHORIZATION_TIMEOUT = 600
 
 # File with the OAuth client secret
 CLIENT_SECRET_FILE = "client_secret.json"
@@ -60,6 +60,14 @@ TOKEN_PICKLE_FILE = "token.pickle"
 TIMEZONE = timezone("Europe/London")
 
 
+class AuthorizationTypes(Enum):
+    """The possible types for API authorisation"""
+
+    SSH = auto()
+    PUSHBULLET = auto()
+    BROWSER = auto()
+
+
 class YouTube:
     """Represents the YouTube API.
 
@@ -71,7 +79,7 @@ class YouTube:
 
         self.config = config
 
-    def get_service(self, open_browser: Optional[Union[bool, str]] = False,
+    def get_service(self, auth_type: AuthorizationTypes = AuthorizationTypes.PUSHBULLET,
                     token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
 
@@ -81,30 +89,91 @@ class YouTube:
 
         LOGGER.info("Authorising service...")
 
-        @func_set_timeout(AUTHORIZATION_TIMEOUT)
-        def authorize_in_browser():
-            """Authorize in the browser, with a timeout."""
+        def authorize_over_pushbullet(title: str, url: str) -> str:
+            """Pushes the URL to Pushbullet using the config.
 
-            if open_browser is False:
-                # Tell the user to go and authorize it themselves
+            This pushes the given URL to Pushbullet using the config. It will
+            catch any Pushbullet-associated exceptions.
+
+            :param title: the title of the URL
+            :type title: str
+            :param url: the URL to push
+            :type url: str
+            :return: the authorization code
+            :rtype: str
+            """
+
+            # Attempt to authenticate
+            try:
+                LOGGER.debug("Authenticating with Pushbullet")
+                pb = Pushbullet(self.config["pushbullet_access_token"])
+                LOGGER.debug("Authenticated with Pushbullet.")
+            except InvalidKeyError:
+                LOGGER.exception("InvalidKeyError raised when authenticating Pushbullet.")
+                traceback.print_exc()
+
+            # If successfully authenticated then attempt to push
+            else:
+                try:
+
+                    # Push to the device(s)
+                    if str(self.config["pushbullet_device"]).lower() == "false":
+                        pb.get_device(str(self.config["pushbullet_device"])).push_link(title, url)
+                        LOGGER.debug("Pushed URL %s with title %s to all devices.",
+                                     url, title)
+                    else:
+                        pb.push_link(title, url)
+                        LOGGER.debug("Pushed URL %s with title %s to device %s.",
+                                     url, title, self.config["pushbullet_device"])
+
+                    # Create a callback device
+                    callback_name = f"YT Auth {datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}"
+                    callback_start = str(datetime.now(tz=TIMEZONE).timestamp())
+                    callback = pb.new_device(callback_name)
+
+                    # Get the code
+                    while True:
+                        pushes = pb.get_pushes(modified_after=callback_start)
+                        LOGGER.debug("Pushes is: \n%s.", str(pushes))
+                        if len(pushes) > 0 and "body" in pushes[0].keys():
+                            pb.dismiss_push(pushes[0]["iden"])
+                            pb.remove_device(callback)
+                            return pushes[0]["body"]
+                        time.sleep(5)
+
+                except InvalidKeyError:
+                    LOGGER.exception("InvalidKeyError raised when pushing to Pushbullet.")
+                    traceback.print_exc()
+                except PushError:
+                    LOGGER.exception("PushError raised when pushing to Pushbullet.")
+                    traceback.print_exc()
+
+        @func_set_timeout(AUTHORIZATION_TIMEOUT)
+        def authorize():
+            """Authorize the request."""
+
+            # Open the browser for the user to authorize it
+            if auth_type is AuthorizationTypes.BROWSER:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    CLIENT_SECRET_FILE, SCOPES)
+                print("Your browser should open automatically.")
+                return flow.run_local_server(port=0)
+
+            # Tell the user to authorize it themselves
+            else:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     CLIENT_SECRET_FILE, SCOPES,
                     redirect_uri="urn:ietf:wg:oauth:2.0:oob")
                 auth_url, _ = flow.authorization_url(prompt="consent")
                 print(
                     f"Please visit this URL to authorize this application: {auth_url}")
-                self.push_url("YouTube Authorisation URL", auth_url)
-
-                # Get the authorization code
-                code = input("Enter the authorization code: ")
+                if auth_type is AuthorizationTypes.PUSHBULLET and str(
+                        self.config["pushbullet_access_token"]).lower() != "false":
+                    code = authorize_over_pushbullet("YT API Authorization", auth_url)
+                else:
+                    code = input("Enter the authorization code: ")
                 flow.fetch_token(code=code)
                 return flow.credentials
-
-            # Else open the browser for the user to authorize it
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CLIENT_SECRET_FILE, SCOPES)
-            print("Your browser should open automatically.")
-            return flow.run_local_server(port=0)
 
         # Attempt to access pre-existing credentials
         if os.path.exists(token_file):
@@ -119,7 +188,7 @@ class YouTube:
             except RefreshError:
                 os.remove(token_file)
                 try:
-                    credentials = authorize_in_browser()
+                    credentials = authorize()
                 except FunctionTimedOut as error:
                     raise FunctionTimedOut(
                         f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
@@ -127,7 +196,7 @@ class YouTube:
         # If they don't exist then get some new ones
         else:
             try:
-                credentials = authorize_in_browser()
+                credentials = authorize()
             except FunctionTimedOut as error:
                 raise FunctionTimedOut(
                     f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
@@ -174,55 +243,6 @@ class YouTube:
 
         # Catch-all
         return Exception("Request failed after 5 retries.")
-
-    def push_url(self, title: str, url: str):
-        """Pushes the URL to Pushbullet using the config.
-
-        This pushes the given URL to Pushbullet using the config. It will
-        catch any Pushbullet-associated exceptions.
-
-        :param title: the title of the URL
-        :type title: str
-        :param url: the URL to push
-        :type url: str
-        """
-
-        # Stop if the user doesn't want to use Pushbullet
-        if str(self.config["pushbullet_access_token"]).lower() == "false":
-            return
-
-        # Attempt to authenticate
-        try:
-            LOGGER.info("Authenticating with Pushbullet")
-            pb = Pushbullet(self.self.config["pushbullet_access_token"])
-            LOGGER.info("Authenticated with Pushbullet.")
-        except InvalidKeyError:
-            LOGGER.exception("InvalidKeyError raised when authenticating Pushbullet.")
-            print("InvalidKeyError raised when authenticating Pushbullet.")
-            traceback.print_exc()
-
-        # If successfully authenticated then attempt to push
-        else:
-            try:
-                if str(self.config["pushbullet_device"]).lower() == "false":
-                    pb.get_device(str(self.config["pushbullet_device"])).push_link(title, url)
-                    LOGGER.info("Pushed URL %s with title %s to all devices.",
-                                url, title)
-                    print("The URL has been successfully pushed to all devices.")
-                else:
-                    pb.push_link(title, url)
-                    LOGGER.info("Pushed URL %s with title %s to device %s.",
-                                url, title, self.config["pushbullet_device"])
-                    print("The URL has been successfully pushed to %s." %
-                          self.config["pushbullet_device"])
-            except InvalidKeyError:
-                LOGGER.exception("InvalidKeyError raised when pushing to Pushbullet.")
-                print("InvalidKeyError raised when pushing to Pushbullet.")
-                traceback.print_exc()
-            except PushError:
-                LOGGER.exception("PushError raised when pushing to Pushbullet.")
-                print("PushError raised when pushing to Pushbullet.")
-                traceback.print_exc()
 
 
 class BroadcastTypes(Enum):
