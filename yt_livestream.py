@@ -89,65 +89,6 @@ class YouTube:
 
         LOGGER.info("Authorising service...")
 
-        def authorize_over_pushbullet(title: str, url: str) -> str:
-            """Pushes the URL to Pushbullet using the config.
-
-            This pushes the given URL to Pushbullet using the config. It will
-            catch any Pushbullet-associated exceptions.
-
-            :param title: the title of the URL
-            :type title: str
-            :param url: the URL to push
-            :type url: str
-            :return: the authorization code
-            :rtype: str
-            """
-
-            # Attempt to authenticate
-            try:
-                LOGGER.debug("Authenticating with Pushbullet")
-                pb = Pushbullet(self.config["pushbullet_access_token"])
-                LOGGER.debug("Authenticated with Pushbullet.")
-            except InvalidKeyError:
-                LOGGER.exception("InvalidKeyError raised when authenticating Pushbullet.")
-                traceback.print_exc()
-
-            # If successfully authenticated then attempt to push
-            else:
-                try:
-
-                    # Push to the device(s)
-                    if str(self.config["pushbullet_device"]).lower() == "false":
-                        pb.get_device(str(self.config["pushbullet_device"])).push_link(title, url)
-                        LOGGER.debug("Pushed URL %s with title %s to all devices.",
-                                     url, title)
-                    else:
-                        pb.push_link(title, url)
-                        LOGGER.debug("Pushed URL %s with title %s to device %s.",
-                                     url, title, self.config["pushbullet_device"])
-
-                    # Create a callback device
-                    callback_name = f"YT Auth {datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}"
-                    callback_start = str(datetime.now(tz=TIMEZONE).timestamp())
-                    callback = pb.new_device(callback_name)
-
-                    # Get the code
-                    while True:
-                        pushes = pb.get_pushes(modified_after=callback_start)
-                        LOGGER.debug("Pushes is: \n%s.", str(pushes))
-                        if len(pushes) > 0 and "body" in pushes[0].keys():
-                            pb.dismiss_push(pushes[0]["iden"])
-                            pb.remove_device(callback)
-                            return pushes[0]["body"]
-                        time.sleep(5)
-
-                except InvalidKeyError:
-                    LOGGER.exception("InvalidKeyError raised when pushing to Pushbullet.")
-                    traceback.print_exc()
-                except PushError:
-                    LOGGER.exception("PushError raised when pushing to Pushbullet.")
-                    traceback.print_exc()
-
         @func_set_timeout(AUTHORIZATION_TIMEOUT)
         def authorize():
             """Authorize the request."""
@@ -169,7 +110,7 @@ class YouTube:
                     f"Please visit this URL to authorize this application: {auth_url}")
                 if auth_type is AuthorizationTypes.PUSHBULLET and str(
                         self.config["pushbullet_access_token"]).lower() != "false":
-                    code = authorize_over_pushbullet("YT API Authorization", auth_url)
+                    code = self.pushbullet_request_response("YT API Authorization", auth_url)
                 else:
                     code = input("Enter the authorization code: ")
                 flow.fetch_token(code=code)
@@ -243,6 +184,61 @@ class YouTube:
 
         # Catch-all
         return Exception("Request failed after 5 retries.")
+
+    @func_set_timeout(AUTHORIZATION_TIMEOUT)
+    def pushbullet_request_response(self, title: str, url: str) -> str:
+        """Pushes the URL to Pushbullet and awaits a response
+
+        This pushes the given URL to Pushbullet using the config. It will
+        catch any Pushbullet-associated exceptions.
+
+        :param title: the title of the URL
+        :type title: str
+        :param url: the URL to push
+        :type url: str
+        :return: the response text
+        :rtype: str
+        """
+
+        # Attempt to authenticate
+        try:
+            LOGGER.debug("Authenticating with Pushbullet")
+            pb = Pushbullet(self.config["pushbullet_access_token"])
+            LOGGER.debug("Authenticated with Pushbullet.")
+        except InvalidKeyError:
+            LOGGER.exception("InvalidKeyError raised when authenticating Pushbullet.")
+            traceback.print_exc()
+
+        # If successfully authenticated then attempt to push
+        else:
+            try:
+
+                # Push to the device(s)
+                if str(self.config["pushbullet_device"]).lower() == "false":
+                    pb.get_device(str(self.config["pushbullet_device"])).push_link(title, url)
+                    LOGGER.debug("Pushed URL %s with title %s to all devices.",
+                                 url, title)
+                else:
+                    pb.push_link(title, url)
+                    LOGGER.debug("Pushed URL %s with title %s to device %s.",
+                                 url, title, self.config["pushbullet_device"])
+
+                # Get the response
+                callback_start = str(datetime.now(tz=TIMEZONE).timestamp())
+                while True:
+                    pushes = pb.get_pushes(modified_after=callback_start)
+                    LOGGER.debug("Pushes is: \n%s.", str(pushes))
+                    if len(pushes) > 0 and "body" in pushes[0].keys():
+                        pb.dismiss_push(pushes[0]["iden"])
+                        return pushes[0]["body"]
+                    time.sleep(5)
+
+            except InvalidKeyError:
+                LOGGER.exception("InvalidKeyError raised when using Pushbullet.")
+                traceback.print_exc()
+            except PushError:
+                LOGGER.exception("PushError raised when using Pushbullet.")
+                traceback.print_exc()
 
 
 class BroadcastTypes(Enum):
