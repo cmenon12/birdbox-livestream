@@ -288,7 +288,6 @@ class YouTubeLivestream:
         end_time = start_time + timedelta(minutes=duration_mins)
         LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
         new_hour = 0 if round(end_time.hour / 6) * 6 >= 24 else round(end_time.hour / 6) * 6
-        new_hour = 0 if new_hour + (6 * (end_time.minute // 30)) >= 24 else new_hour + (6 * (end_time.minute // 30))
         end_time = end_time.replace(second=0, microsecond=0, minute=0,
                                     hour=new_hour)
         LOGGER.debug(
