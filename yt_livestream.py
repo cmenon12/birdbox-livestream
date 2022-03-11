@@ -26,7 +26,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional, Union, Any
+from typing import Optional, Any
 
 import googleapiclient
 from func_timeout import func_set_timeout, FunctionTimedOut
@@ -34,6 +34,7 @@ from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from pushbullet import InvalidKeyError, PushError, Pushbullet
 from pytz import timezone
 
 __author__ = "Christopher Menon"
@@ -43,8 +44,8 @@ __license__ = "gpl-3.0"
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
 
-# How long to wait for authorization (in seconds)
-AUTHORIZATION_TIMEOUT = 300
+# How long to wait for authorisation (in seconds)
+AUTHORISATION_TIMEOUT = 600
 
 # File with the OAuth client secret
 CLIENT_SECRET_FILE = "client_secret.json"
@@ -59,37 +60,29 @@ TOKEN_PICKLE_FILE = "token.pickle"
 TIMEZONE = timezone("Europe/London")
 
 
-class BroadcastTypes(Enum):
-    """The possible types for a broadcast, including an 'all' type."""
+class AuthorisationTypes(Enum):
+    """The possible types for API authorisation"""
 
-    SCHEDULED = auto()
-    LIVE = auto()
-    FINISHED = auto()
-    ALL = auto()
+    SSH = auto()
+    PUSHBULLET = auto()
+    BROWSER = auto()
 
 
-class YouTubeLivestream:
-    """Represents a single continuous YouTube livestream.
+class YouTube:
+    """Represents the YouTube API.
 
     :param config: the config to use
     :type config: configparser.SectionProxy
     """
 
     def __init__(self, config: configparser.SectionProxy):
-        self.service = YouTubeLivestream.get_service()
 
         self.config = config
 
-        self.live_stream = None
-        self.week_playlist = None
-        self.scheduled_broadcasts = {}
-        self.finished_broadcasts = {}
-        self.live_broadcasts = {}
-
-    @staticmethod
-    def get_service(open_browser: Optional[Union[bool, str]] = False,
-                    token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
-
+    def get_service(
+            self,
+            auth_type: AuthorisationTypes = AuthorisationTypes.PUSHBULLET,
+            token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
         """Authenticates the YouTube API, returning the service.
 
         :return: the YouTube API service (a Resource)
@@ -98,32 +91,34 @@ class YouTubeLivestream:
 
         LOGGER.info("Authorising service...")
 
-        @func_set_timeout(AUTHORIZATION_TIMEOUT)
-        def authorize_in_browser():
-            """Authorize in the browser, with a timeout."""
+        @func_set_timeout(AUTHORISATION_TIMEOUT)
+        def authorise():
+            """Authorise the request."""
 
-            if open_browser is False:
-                # Tell the user to go and authorize it themselves
+            # Open the browser for the user to authorise it
+            if auth_type is AuthorisationTypes.BROWSER:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    CLIENT_SECRET_FILE, SCOPES)
+                print("Your browser should open automatically.")
+                return flow.run_local_server(port=0)
+
+            # Tell the user to authorise it themselves
+            else:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     CLIENT_SECRET_FILE, SCOPES,
                     redirect_uri="urn:ietf:wg:oauth:2.0:oob")
-                auth_url, _ = flow.authorization_url(prompt="consent")
+                auth_url, _ = flow.authorisation_url(prompt="consent")
                 print(
-                    f"Please visit this URL to authorize this application: {auth_url}")
-                print("The URL has been copied to the clipboard.")
-
-                # Get the authorization code
-                code = input("Enter the authorization code: ")
+                    f"Please visit this URL to authorise this application: {auth_url}")
+                if auth_type is AuthorisationTypes.PUSHBULLET and str(
+                        self.config["pushbullet_access_token"]).lower() != "false":
+                    print("Requesting via Pushbullet...")
+                    code = self.pushbullet_request_response(
+                        "YT API Authorisation", auth_url)
+                else:
+                    code = input("Enter the authorisation code: ")
                 flow.fetch_token(code=code)
                 return flow.credentials
-
-            # Else open the browser for the user to authorize it
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CLIENT_SECRET_FILE, SCOPES)
-            print("Your browser should open automatically.")
-            return flow.run_local_server(port=0)
-
-        credentials = None
 
         # Attempt to access pre-existing credentials
         if os.path.exists(token_file):
@@ -131,35 +126,28 @@ class YouTubeLivestream:
                 LOGGER.debug("Loading credentials from %s.", token_file)
                 credentials = pickle.load(token)
 
-        # If there are no (valid) credentials available let the user log in
-        LOGGER.debug("Credentials are: %s.", str(credentials))
-        if not credentials or not credentials.valid:
-            LOGGER.debug("There are no credentials or they are invalid.")
-            if credentials and credentials.refresh_token:
+            # Try to refresh the credentials
+            LOGGER.debug("Credentials are: %s.", str(credentials))
+            try:
+                credentials.refresh(Request())
+            except RefreshError:
+                os.remove(token_file)
                 try:
-                    credentials.refresh(Request())
-                except RefreshError:
-                    os.remove(token_file)
-
-                    try:
-                        credentials = authorize_in_browser()
-                    except FunctionTimedOut as error:
-                        raise FunctionTimedOut(
-                            f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
-            else:
-                try:
-                    credentials = authorize_in_browser()
+                    credentials = authorise()
                 except FunctionTimedOut as error:
                     raise FunctionTimedOut(
-                        f"Waited {AUTHORIZATION_TIMEOUT} seconds to authorize Google APIs.") from error
+                        f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google APIs.") from error
 
-        # If we do have valid credentials then refresh them
+        # If they don't exist then get some new ones
         else:
-            credentials.refresh(Request())
+            try:
+                credentials = authorise()
+            except FunctionTimedOut as error:
+                raise FunctionTimedOut(
+                    f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google APIs.") from error
 
         # Save the credentials for the next run
         with open(token_file, "wb") as token:
-            print()
             pickle.dump(credentials, token)
         LOGGER.debug("Credentials saved to %s successfully.",
                      token_file)
@@ -200,6 +188,91 @@ class YouTubeLivestream:
         # Catch-all
         return Exception("Request failed after 5 retries.")
 
+    @func_set_timeout(AUTHORISATION_TIMEOUT)
+    def pushbullet_request_response(self, title: str, url: str) -> str:
+        """Pushes the URL to Pushbullet and awaits a response
+
+        This pushes the given URL to Pushbullet using the config. It will
+        catch any Pushbullet-associated exceptions.
+
+        :param title: the title of the URL
+        :type title: str
+        :param url: the URL to push
+        :type url: str
+        :return: the response text
+        :rtype: str
+        """
+
+        # Attempt to authenticate
+        try:
+            LOGGER.debug("Authenticating with Pushbullet")
+            pb = Pushbullet(self.config["pushbullet_access_token"])
+            LOGGER.debug("Authenticated with Pushbullet.")
+        except InvalidKeyError:
+            LOGGER.exception(
+                "InvalidKeyError raised when authenticating Pushbullet.")
+            traceback.print_exc()
+
+        # If successfully authenticated then attempt to push
+        else:
+            try:
+
+                # Push to the device(s)
+                if str(self.config["pushbullet_device"]).lower() == "false":
+                    pb.get_device(str(self.config["pushbullet_device"])).push_link(
+                        title, url)
+                    LOGGER.debug("Pushed URL %s with title %s to all devices.",
+                                 url, title)
+                else:
+                    pb.push_link(title, url)
+                    LOGGER.debug("Pushed URL %s with title %s to device %s.",
+                                 url, title, self.config["pushbullet_device"])
+
+                # Get the response
+                callback_start = str(datetime.now(tz=TIMEZONE).timestamp())
+                while True:
+                    pushes = pb.get_pushes(modified_after=callback_start)
+                    LOGGER.debug("Pushes is: \n%s.", str(pushes))
+                    if len(pushes) > 0 and "body" in pushes[0].keys():
+                        pb.dismiss_push(pushes[0]["iden"])
+                        return pushes[0]["body"]
+                    time.sleep(5)
+
+            except InvalidKeyError:
+                LOGGER.exception(
+                    "InvalidKeyError raised when using Pushbullet.")
+                traceback.print_exc()
+            except PushError:
+                LOGGER.exception("PushError raised when using Pushbullet.")
+                traceback.print_exc()
+
+
+class BroadcastTypes(Enum):
+    """The possible types for a broadcast, including an 'all' type."""
+
+    SCHEDULED = auto()
+    LIVE = auto()
+    FINISHED = auto()
+    ALL = auto()
+
+
+class YouTubeLivestream(YouTube):
+    """Represents a single continuous YouTube livestream.
+
+    :param config: the config to use
+    :type config: configparser.SectionProxy
+    """
+
+    def __init__(self, config: configparser.SectionProxy):
+
+        self.config = config
+
+        self.live_stream = None
+        self.week_playlist = None
+        self.scheduled_broadcasts = {}
+        self.finished_broadcasts = {}
+        self.live_broadcasts = {}
+
     def get_stream(self) -> dict:
         """Gets the live_stream, creating it if needed.
 
@@ -217,7 +290,7 @@ class YouTubeLivestream:
 
         # Create a new livestream
         LOGGER.debug("Creating a new stream...")
-        stream = self.execute_request(self.service.liveStreams().insert(
+        stream = self.execute_request(self.get_service().liveStreams().insert(
             part="snippet,cdn,contentDetails,id,status",
             body={
                 "cdn": {
@@ -300,7 +373,7 @@ class YouTubeLivestream:
 
         # Schedule a new broadcast
         LOGGER.debug("Scheduling a new broadcast...")
-        broadcast = self.execute_request(self.service.liveBroadcasts().insert(
+        broadcast = self.execute_request(self.get_service().liveBroadcasts().insert(
             part="id,snippet,contentDetails,status",
             body={
                 "contentDetails": {
@@ -358,11 +431,11 @@ class YouTubeLivestream:
 
         # Bind the broadcast to the stream
         LOGGER.debug("Binding the broadcast to the stream...")
-        broadcast = self.execute_request(self.service.liveBroadcasts().bind(
-            id=self.scheduled_broadcasts[start_time]["id"],
-            part="id,snippet,contentDetails,status",
-            streamId=self.get_stream()["id"]
-        ))
+        broadcast = self.execute_request(
+            self.get_service().liveBroadcasts().bind(
+                id=self.scheduled_broadcasts[start_time]["id"],
+                part="id,snippet,contentDetails,status",
+                streamId=self.get_stream()["id"]))
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         limit = 60
@@ -379,7 +452,7 @@ class YouTubeLivestream:
 
         # # Get the broadcast
         # LOGGER.debug("Getting the broadcast...")
-        # broadcast_temp = self.execute_request(self.service.liveBroadcasts().list(
+        # broadcast_temp = self.execute_request(self.get_service().liveBroadcasts().list(
         #     id=broadcast["id"],
         #     part="id,snippet,contentDetails,status"
         # ))
@@ -389,7 +462,7 @@ class YouTubeLivestream:
         LOGGER.debug("Transitioning the broadcastStatus to live...")
         try:
             broadcast = self.execute_request(
-                self.service.liveBroadcasts().transition(
+                self.get_service().liveBroadcasts().transition(
                     broadcastStatus="live",
                     id=broadcast["id"],
                     part="id,snippet,contentDetails,status"))
@@ -452,7 +525,7 @@ class YouTubeLivestream:
         LOGGER.debug("Transitioning the broadcastStatus to complete...")
         try:
             broadcast = self.execute_request(
-                self.service.liveBroadcasts().transition(
+                self.get_service().liveBroadcasts().transition(
                     broadcastStatus="complete",
                     id=self.live_broadcasts[start_time]["id"],
                     part="id,snippet,contentDetails,status"))
@@ -504,7 +577,7 @@ class YouTubeLivestream:
         :rtype: dict
         """
 
-        stream = self.execute_request(self.service.liveStreams().list(
+        stream = self.execute_request(self.get_service().liveStreams().list(
             id=self.get_stream()["id"],
             part="status"
         ))
@@ -526,7 +599,7 @@ class YouTubeLivestream:
         LOGGER.info(locals())
 
         # Get the existing snippet details
-        video = self.execute_request(self.service.videos().list(
+        video = self.execute_request(self.get_service().videos().list(
             id=video_id,
             part="id,snippet"
         ))
@@ -545,7 +618,7 @@ class YouTubeLivestream:
 
         # Update it
         LOGGER.debug("Updating the video metadata...")
-        video = self.execute_request(self.service.videos().update(
+        video = self.execute_request(self.get_service().videos().update(
             part="id,snippet",
             body=body
         ))
@@ -582,13 +655,15 @@ class YouTubeLivestream:
             next_page_token = ""
             all_playlists = []
             while next_page_token is not None:
-                response = self.execute_request(self.service.playlists().list(
-                    part="id,snippet",
-                    mine=True,
-                    maxResults=50,
-                    pageToken=next_page_token
-                ))
-                LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
+                response = self.execute_request(
+                    self.get_service().playlists().list(
+                        part="id,snippet",
+                        mine=True,
+                        maxResults=50,
+                        pageToken=next_page_token))
+                LOGGER.debug(
+                    "Response is: \n%s.", json.dumps(
+                        response, indent=4))
                 all_playlists.extend(response["items"])
                 next_page_token = response.get("nextPageToken")
             LOGGER.debug(
@@ -608,7 +683,7 @@ class YouTubeLivestream:
                 LOGGER.debug("Creating a new playlist...")
                 description = f"This playlist has videos of the birdbox from {(start_time - timedelta(days=start_time.weekday())).strftime('%a %d %B')} to {(start_time - timedelta(days=start_time.weekday() - 6)).strftime('%a %d %B')}. "
                 self.week_playlist = self.execute_request(
-                    self.service.playlists().insert(
+                    self.get_service().playlists().insert(
                         part="id,snippet,status", body={
                             "snippet": {
                                 "title": playlist_title, "description": description}, "status": {
@@ -619,7 +694,7 @@ class YouTubeLivestream:
 
         # Add the video to the playlist
         playlist_item = self.execute_request(
-            self.service.playlistItems().insert(
+            self.get_service().playlistItems().insert(
                 part="id,snippet",
                 body={
                     "snippet": {
@@ -795,7 +870,8 @@ if __name__ == "__main__":
         handlers=[
             logging.FileHandler(
                 f"./logs/{log_filename}",
-                mode="a", encoding="utf-8")])
+                mode="a",
+                encoding="utf-8")])
     LOGGER = logging.getLogger(__name__)
 
     # Run it

@@ -10,3 +10,4 @@ opencv-python
 progress_bar
 humanize
 Send2Trash
+pushbullet.py
