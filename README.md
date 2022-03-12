@@ -4,7 +4,10 @@ This is a small collection of Python scripts designed for livestreaming a birdbo
 
 ### **[Check out the channel on YouTube!](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)** (there are no birds yet 😢)
 
+[<img src="/my-birdbox.png" alt="" width="500" />](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)
+
 [![GitHub license](https://img.shields.io/github/license/cmenon12/birdbox-livestream?style=flat)](https://github.com/cmenon12/birdbox-livestream/blob/master/LICENSE)
+
 
 ## The Python Scripts
 
