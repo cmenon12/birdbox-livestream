@@ -354,7 +354,7 @@ class YouTubeLivestream(YouTube):
             return self.get_broadcasts()[start_time]
 
         # Round the end time to the nearest 6 hours
-        end_time = start_time + timedelta(minutes=360)
+        end_time = start_time.astimezone(TIMEZONE) + timedelta(minutes=360)
         LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
 
         # If it's going to be tomorrow at midnight
@@ -822,7 +822,7 @@ def main():
                 last_broadcast = scheduled[last_start_time]
                 start_time = datetime.fromisoformat(
                     last_broadcast["snippet"]["scheduledEndTime"].replace(
-                        "Z", "+00:00"))
+                        "Z", "+00:00")).astimezone(TIMEZONE)
                 yt.schedule_broadcast(start_time)
 
             time.sleep(5)
