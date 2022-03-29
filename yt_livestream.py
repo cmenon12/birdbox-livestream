@@ -356,9 +356,17 @@ class YouTubeLivestream(YouTube):
         # Round the end time to the nearest 6 hours
         end_time = start_time + timedelta(minutes=360)
         LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
-        new_hour = 0 if round(end_time.hour / 6) * 6 >= 24 else round(end_time.hour / 6) * 6
-        end_time = end_time.replace(second=0, microsecond=0, minute=0,
-                                    hour=new_hour)
+
+        # If it's going to be tomorrow at midnight
+        if round(end_time.hour / 6) * 6 >= 24:
+            end_time = end_time.replace(second=0, microsecond=0, minute=0,
+                                        hour=0)
+            end_time += timedelta(days=1)
+
+        # Otherwise just round
+        else:
+            end_time = end_time.replace(second=0, microsecond=0, minute=0,
+                                        hour=round(end_time.hour / 6) * 6)
         LOGGER.debug(
             "End time to the nearest hour is %s.",
             end_time.isoformat())
