@@ -59,6 +59,9 @@ TOKEN_PICKLE_FILE = "token.pickle"
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
 
+# The max broadcasts to schedule in advance
+MAX_SCHEDULED_BROADCASTS = 2
+
 
 class AuthorisationTypes(Enum):
     """The possible types for API authorisation"""
@@ -330,24 +333,17 @@ class YouTubeLivestream(YouTube):
     def schedule_broadcast(
             self,
             start_time: datetime = datetime.now(
-                tz=TIMEZONE),
-            duration_mins: int = 0) -> dict:
+                tz=TIMEZONE)) -> dict:
         """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
         :type start_time: datetime.datetime, optional
-        :param duration_mins: how long the broadcast will last for in minutes
-        :type duration_mins: int, optional
         :return: the YouTube liveBroadcast resource
         :rtype: dict
         """
 
         LOGGER.info("Scheduling the broadcast...")
         LOGGER.info(locals())
-
-        if duration_mins <= 0:
-            duration_mins = int(self.config["default_duration"])
-            LOGGER.debug("Using default duration of %d.", duration_mins)
 
         # Stop if a broadcast already exists at this time
         if start_time in self.get_broadcasts().keys():
@@ -358,7 +354,7 @@ class YouTubeLivestream(YouTube):
             return self.get_broadcasts()[start_time]
 
         # Round the end time to the nearest 6 hours
-        end_time = start_time + timedelta(minutes=duration_mins)
+        end_time = start_time + timedelta(minutes=360)
         LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
         new_hour = 0 if round(end_time.hour / 6) * 6 >= 24 else round(end_time.hour / 6) * 6
         end_time = end_time.replace(second=0, microsecond=0, minute=0,
@@ -781,7 +777,6 @@ def main():
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
     yt_config = parser["YouTubeLivestream"]
-    main_config = parser["yt_livestream"]
     email_config = parser["email"]
 
     try:
@@ -811,7 +806,7 @@ def main():
             live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
 
             # Schedule broadcasts
-            if len(scheduled) < int(main_config["max_scheduled_broadcasts"]):
+            if len(scheduled) < int(MAX_SCHEDULED_BROADCASTS):
                 if len(scheduled) != 0:
                     last_start_time = max(scheduled.keys())
                 else:
