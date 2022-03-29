@@ -1,3 +1,5 @@
+<img align="left" width="65" height="65" src="/logo.png">
+
 # birdbox-livestream
 
 This is a small collection of Python scripts designed for livestreaming a birdbox from a Raspberry Pi to YouTube!
