@@ -141,3 +141,4 @@ config.ini
 *.avi
 *.ytdl
 save_data.json
+/music
