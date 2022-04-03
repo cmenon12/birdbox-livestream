@@ -902,6 +902,7 @@ def main():
 
             scheduled = yt.get_broadcasts(BroadcastTypes.SCHEDULED).copy()
             live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
+            now = datetime.now(tz=TIMEZONE)
 
             # Schedule broadcasts
             if len(scheduled) < int(MAX_SCHEDULED_BROADCASTS):
@@ -919,8 +920,17 @@ def main():
 
             # Start broadcasts
             for start_time in scheduled.keys():
-                if start_time <= datetime.now(tz=TIMEZONE):
+                if start_time <= now:
                     yt.start_broadcast(start_time)
+
+                    # Wait until it's actually live
+                    status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
+                    while status != "live":
+                        status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
+                        time.sleep(20)
+
+                    # Update the start time
+                    yt.update_video_start_time(scheduled[start_time]["id"])
 
             time.sleep(5)
 
@@ -929,13 +939,14 @@ def main():
                 end_time = datetime.fromisoformat(
                     live[start_time]["snippet"]["scheduledEndTime"].replace(
                         "Z", "+00:00"))
-                if end_time <= datetime.now(tz=TIMEZONE):
+                if end_time <= now:
                     yt.end_broadcast(start_time)
+                    yt.update_video_end_time(live[start_time])
 
             time.sleep(5)
 
-            # If the time is divisible by 5, log the status
-            if datetime.now(tz=TIMEZONE).minute % 5 == 0:
+            # If the time is divisible by 5, log the stream status
+            if now.minute % 5 == 0:
                 try:
                     yt.get_stream_status()
                     time.sleep(60)
