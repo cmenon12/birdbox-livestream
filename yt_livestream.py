@@ -663,7 +663,8 @@ class YouTubeLivestream(YouTube):
         if "starting on" in description:
             old_start_time = description[40:59]
             new_description = description.replace(old_start_time, start_time.strftime("%a %d %b at %H.%M"))
-            self.update_video_metadata(video_id, description=new_description)
+            new_title = f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}"
+            self.update_video_metadata(video_id, title=new_title, description=new_description)
 
         # If asked then raise exception
         elif fail_silently is False:
