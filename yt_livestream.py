@@ -337,7 +337,7 @@ class YouTubeLivestream(YouTube):
         """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
-        :type start_time: datetime.datetime, optional
+        :type start_time: datetime
         :return: the YouTube liveBroadcast resource
         :rtype: dict
         """
@@ -419,7 +419,7 @@ class YouTubeLivestream(YouTube):
         """Start the broadcast by binding the stream to it.
 
         :param start_time: when the broadcast should start
-        :type start_time: datetime.datetime, optional
+        :type start_time: datetime
         :return: the updated YouTube liveBroadcast resource
         :rtype: dict
         :raises ValueError: if the broadcast at that times doesn't exist
@@ -495,7 +495,7 @@ class YouTubeLivestream(YouTube):
             description = f"{self.live_broadcasts[start_time]['snippet']['description']} Watch the next part here: https://youtu.be/{broadcasts[end_time]['id']}."
             LOGGER.debug("Updating the description to %s.", description)
             self.update_video_metadata(
-                self.live_broadcasts[start_time]["id"], description)
+                self.live_broadcasts[start_time]["id"], description=description)
         else:
             LOGGER.debug(
                 "No next video found (none starting at %s).",
@@ -511,7 +511,7 @@ class YouTubeLivestream(YouTube):
         """End the broadcast by changing it's state to complete.
 
         :param start_time: when the broadcast should start
-        :type start_time: datetime.datetime, optional
+        :type start_time: datetime
         :return: the updated YouTube liveBroadcast resource
         :rtype: dict
         :raises ValueError: if the broadcast at that times doesn't exist
@@ -592,11 +592,16 @@ class YouTubeLivestream(YouTube):
     def update_video_metadata(
             self,
             video_id: str,
+            title: Optional[str] = None,
             description: Optional[str] = None) -> None:
         """Update standard video metadata.
 
         :param video_id: the ID of the video to update
         :type video_id: str
+        :param title: the new title
+        :type title: Optional[str]
+        :param description: the new description
+        :type description: Optional[str]
         """
 
         LOGGER.info("Updating the video metadata...")
@@ -615,7 +620,7 @@ class YouTubeLivestream(YouTube):
         body["snippet"]["tags"] = json.loads(self.config["tags"])
         body["snippet"]["description"] = description if description is not None else video["items"][0]["snippet"][
             "description"]
-        body["snippet"]["title"] = video["items"][0]["snippet"]["title"]
+        body["snippet"]["title"] = title if title is not None else video["items"][0]["snippet"]["title"]
         body["snippet"]["defaultLanguage"] = "en-GB"
 
         LOGGER.debug("Body is: \n%s.", body)
@@ -638,9 +643,9 @@ class YouTubeLivestream(YouTube):
         :param video_id: the ID of the video to update
         :type video_id: str
         :param start_time: the new start time
-        :type start_time: datetime, optional
+        :type start_time: datetime
         :param fail_silently: whether to skip quietly if it can't be replaced
-        :type fail_silently: bool, optional
+        :type fail_silently: bool
         """
 
         LOGGER.info("Updating the video start time...")
@@ -658,7 +663,7 @@ class YouTubeLivestream(YouTube):
         if "starting on" in description:
             old_start_time = description[40:59]
             new_description = description.replace(old_start_time, start_time.strftime("%a %d %b at %H.%M"))
-            self.update_video_metadata(video_id, new_description)
+            self.update_video_metadata(video_id, description=new_description)
 
         # If asked then raise exception
         elif fail_silently is False:
@@ -674,9 +679,9 @@ class YouTubeLivestream(YouTube):
         :param video_id: the ID of the video to update
         :type video_id: str
         :param end_time: the new end time
-        :type end_time: datetime, optional
+        :type end_time: datetime
         :param fail_silently: whether to skip quietly if it can't be replaced
-        :type fail_silently: bool, optional
+        :type fail_silently: bool
         """
 
         LOGGER.info("Updating the video end time...")
@@ -695,7 +700,7 @@ class YouTubeLivestream(YouTube):
             old_end_time = description[74:79]
             new_description = description.replace(old_end_time,
                                                   end_time.strftime("%H.%M"))
-            self.update_video_metadata(video_id, new_description)
+            self.update_video_metadata(video_id, description=new_description)
 
         # If asked then raise exception
         elif fail_silently is False:
