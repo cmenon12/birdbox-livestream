@@ -630,6 +630,79 @@ class YouTubeLivestream(YouTube):
 
         LOGGER.info("Video metadata updated successfully!")
 
+    def update_video_start_time(self, video_id: str,
+                                start_time: datetime = datetime.now(tz=TIMEZONE),
+                                fail_silently: bool = True) -> None:
+        """Update the video start time, leaving everything else in place.
+
+        :param video_id: the ID of the video to update
+        :type video_id: str
+        :param start_time: the new start time
+        :type start_time: datetime, optional
+        :param fail_silently: whether to skip quietly if it can't be replaced
+        :type fail_silently: bool, optional
+        """
+
+        LOGGER.info("Updating the video start time...")
+        LOGGER.info(locals())
+
+        # Get the existing description
+        video = self.execute_request(self.get_service().videos().list(
+            id=video_id,
+            part="id,snippet"
+        ))
+        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+        description: str = video["items"][0]["snippet"]["description"]
+
+        # Find and replace it, update it
+        if "starting on" in description:
+            old_start_time = description[40:59]
+            new_description = description.replace(old_start_time, start_time.strftime("%a %d %b at %H.%M"))
+            self.update_video_metadata(video_id, new_description)
+
+        # If asked then raise exception
+        elif fail_silently is False:
+            raise RuntimeError("Could not update start time!")
+
+        LOGGER.info("Video start time updated successfully!\n")
+
+    def update_video_end_time(self, video_id: str,
+                              end_time: datetime = datetime.now(tz=TIMEZONE),
+                              fail_silently: bool = True) -> None:
+        """Set the video end time, leaving everything else in place.
+
+        :param video_id: the ID of the video to update
+        :type video_id: str
+        :param end_time: the new end time
+        :type end_time: datetime, optional
+        :param fail_silently: whether to skip quietly if it can't be replaced
+        :type fail_silently: bool, optional
+        """
+
+        LOGGER.info("Updating the video end time...")
+        LOGGER.info(locals())
+
+        # Get the existing description
+        video = self.execute_request(self.get_service().videos().list(
+            id=video_id,
+            part="id,snippet"
+        ))
+        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+        description: str = video["items"][0]["snippet"]["description"]
+
+        # Find and replace it, update it
+        if "ending at" in description:
+            old_end_time = description[74:79]
+            new_description = description.replace(old_end_time,
+                                                  end_time.strftime("%H.%M"))
+            self.update_video_metadata(video_id, new_description)
+
+        # If asked then raise exception
+        elif fail_silently is False:
+            raise RuntimeError("Could not update end time!")
+
+        LOGGER.info("Video end time updated successfully!\n")
+
     def add_to_week_playlist(
             self,
             video_id: str,
