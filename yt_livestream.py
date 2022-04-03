@@ -577,7 +577,7 @@ class YouTubeLivestream(YouTube):
     def get_stream_status(self) -> dict:
         """Fetch and return the status of the livestream.
 
-        :return: the status of the livestream.
+        :return: the status of the livestream
         :rtype: dict
         """
 
@@ -713,6 +713,23 @@ class YouTubeLivestream(YouTube):
                 indent=4))
 
         LOGGER.info("Added the video to the week's playlist successfully!")
+
+    def get_broadcast_status(self, video_id: str) -> dict:
+        """Fetch and return the status of the broadcast.
+
+        :param video_id: the ID of the video to get
+        :type video_id: str
+        :return: the status of the broadcast
+        :rtype: dict
+        """
+
+        broadcast = self.execute_request(self.get_service().liveBroadcasts().list(
+            id=video_id,
+            part="status"
+        ))
+
+        LOGGER.debug("Broadcast status of %s is: %s.", video_id, broadcast["items"][0]["status"])
+        return broadcast["items"][0]["status"]
 
 
 def send_error_email(config: configparser.SectionProxy, trace: str,
