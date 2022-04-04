@@ -636,20 +636,24 @@ class YouTubeLivestream(YouTube):
         LOGGER.info("Video metadata updated successfully!")
 
     def update_video_start_time(self, video_id: str,
-                                start_time: datetime = datetime.now(tz=TIMEZONE),
+                                start_time: Optional[datetime] = None,
                                 fail_silently: bool = True) -> None:
         """Update the video start time, leaving everything else in place.
 
         :param video_id: the ID of the video to update
         :type video_id: str
-        :param start_time: the new start time
-        :type start_time: datetime
+        :param start_time: the new start time, otherwise now
+        :type start_time: Optional[datetime]
         :param fail_silently: whether to skip quietly if it can't be replaced
         :type fail_silently: bool
         """
 
         LOGGER.info("Updating the video start time...")
         LOGGER.info(locals())
+
+        # Use now if not specified
+        if not start_time:
+            start_time = datetime.now(tz=TIMEZONE)
 
         # Get the existing description
         video = self.execute_request(self.get_service().videos().list(
@@ -673,20 +677,24 @@ class YouTubeLivestream(YouTube):
         LOGGER.info("Video start time updated successfully!\n")
 
     def update_video_end_time(self, video_id: str,
-                              end_time: datetime = datetime.now(tz=TIMEZONE),
+                              end_time: Optional[datetime] = None,
                               fail_silently: bool = True) -> None:
         """Set the video end time, leaving everything else in place.
 
         :param video_id: the ID of the video to update
         :type video_id: str
-        :param end_time: the new end time
-        :type end_time: datetime
+        :param end_time: the new end time, otherwise now
+        :type end_time: Optional[datetime]
         :param fail_silently: whether to skip quietly if it can't be replaced
         :type fail_silently: bool
         """
 
         LOGGER.info("Updating the video end time...")
         LOGGER.info(locals())
+
+        # Use now if not specified
+        if not end_time:
+            end_time = datetime.now(tz=TIMEZONE)
 
         # Get the existing description
         video = self.execute_request(self.get_service().videos().list(
