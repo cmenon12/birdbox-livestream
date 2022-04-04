@@ -73,6 +73,20 @@ class YouTubeLiveBroadcast(TypedDict, total=False):
     statistics: BroadcastStatistics
 
 
+class PageInfo(TypedDict, total=False):
+    totalResults: int
+    resultsPerPage: int
+
+
+class YouTubeLiveBroadcastList(TypedDict, total=False):
+    kind: Literal['youtube#liveBroadcastListResponse']
+    etag: str
+    nextPageToken: str
+    prevPageToken: str
+    pageInfo: PageInfo
+    items: List[YouTubeLiveBroadcast]
+
+
 class StreamSnippet(TypedDict, total=False):
     publishedAt: str
     channelId: str
