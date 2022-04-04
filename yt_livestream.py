@@ -947,7 +947,7 @@ def main():
                         "Z", "+00:00"))
                 if end_time <= now:
                     yt.end_broadcast(start_time)
-                    yt.update_video_end_time(live[start_time])
+                    yt.update_video_end_time(live[start_time]["id"])
 
             time.sleep(5)
 
