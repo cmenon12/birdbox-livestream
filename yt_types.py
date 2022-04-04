@@ -1,16 +1,16 @@
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, List
 
 
-class Thumbnail(TypedDict, total=False):
+class BroadcastThumbnail(TypedDict, total=False):
     url: str
     width: int
     height: int
 
 
-class ThumbnailKeys(TypedDict, total=False):
-    default: Thumbnail
-    medium: Thumbnail
-    high: Thumbnail
+class BroadcastThumbnailKeys(TypedDict, total=False):
+    default: BroadcastThumbnail
+    medium: BroadcastThumbnail
+    high: BroadcastThumbnail
 
 
 class BroadcastSnippet(TypedDict, total=False):
@@ -18,7 +18,7 @@ class BroadcastSnippet(TypedDict, total=False):
     channelId: str
     title: str
     description: str
-    thumbnails: ThumbnailKeys
+    thumbnails: BroadcastThumbnailKeys
     scheduledStartTime: str
     scheduledEndTime: str
     actualStartTime: str
@@ -71,3 +71,57 @@ class YouTubeLiveBroadcast(TypedDict, total=False):
     status: BroadcastStatus
     contentDetails: BroadcastContentDetails
     statistics: BroadcastStatistics
+
+
+class StreamSnippet(TypedDict, total=False):
+    publishedAt: str
+    channelId: str
+    title: str
+    description: str
+    isDefaultStream: bool
+
+
+class StreamIngestionInfo(TypedDict, total=False):
+    streamName: str
+    ingestionAddress: str
+    backupIngestionAddress: str
+
+
+class StreamCdn(TypedDict, total=False):
+    ingestionType: str
+    ingestionInfo: StreamIngestionInfo
+    resolution: str
+    frameRate: str
+
+
+class StreamConfigurationIssue(TypedDict, total=False):
+    type: str
+    severity: str
+    reason: str
+    description: str
+
+
+class StreamHealthStatus(TypedDict, total=False):
+    status: str
+    lastUpdateTimeSeconds: int
+    configurationIssues: List[StreamConfigurationIssue]
+
+
+class StreamStatus(TypedDict, total=False):
+    streamStatus: str
+    healthStatus: StreamHealthStatus
+
+
+class StreamContentDetails(TypedDict, total=False):
+    closedCaptionsIngestionUrl: str
+    isReusable: bool
+
+
+class YouTubeLiveStream(TypedDict, total=False):
+    kind: Literal['youtube#liveStream']
+    etag: str
+    id: str
+    snippet: StreamSnippet
+    cdn: StreamCdn
+    status: StreamStatus
+    contentDetails: StreamContentDetails
