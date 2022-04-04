@@ -695,7 +695,7 @@ class YouTubeLivestream(YouTube):
                         self.week_playlist, indent=4))
 
         # Add the video to the playlist
-        playlist_item = self.execute_request(
+        playlist_item: yt_types.YouTubePlaylistItem = self.execute_request(
             self.get_service().playlistItems().insert(
                 part="id,snippet",
                 body={

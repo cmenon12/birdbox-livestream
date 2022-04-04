@@ -1,16 +1,18 @@
 from typing import TypedDict, Literal, List
 
 
-class BroadcastThumbnail(TypedDict, total=False):
+class Thumbnail(TypedDict, total=False):
     url: str
     width: int
     height: int
 
 
-class BroadcastThumbnailKeys(TypedDict, total=False):
-    default: BroadcastThumbnail
-    medium: BroadcastThumbnail
-    high: BroadcastThumbnail
+class ThumbnailKeys(TypedDict, total=False):
+    default: Thumbnail
+    medium: Thumbnail
+    high: Thumbnail
+    standard: Thumbnail
+    maxres: Thumbnail
 
 
 class BroadcastSnippet(TypedDict, total=False):
@@ -18,7 +20,7 @@ class BroadcastSnippet(TypedDict, total=False):
     channelId: str
     title: str
     description: str
-    thumbnails: BroadcastThumbnailKeys
+    thumbnails: ThumbnailKeys
     scheduledStartTime: str
     scheduledEndTime: str
     actualStartTime: str
@@ -139,3 +141,43 @@ class YouTubeLiveStream(TypedDict, total=False):
     cdn: StreamCdn
     status: StreamStatus
     contentDetails: StreamContentDetails
+
+
+class PlaylistItemResourceId(TypedDict, total=False):
+    kind: str
+    videoId: str
+
+
+class PlaylistItemSnippet(TypedDict, total=False):
+    publishedAt: str
+    channelId: str
+    title: str
+    description: str
+    thumbnails: ThumbnailKeys
+    channelTitle: str
+    videoOwnerChannelTitle: str
+    videoOwnerChannelId: str
+    playlistId: str
+    position: int
+    resourceId: PlaylistItemResourceId
+
+
+class PlaylistItemContentDetails(TypedDict, total=False):
+    videoId: str
+    startAt: str
+    endAt: str
+    note: str
+    videoPublishedAt: str
+
+
+class PlaylistItemStatus(TypedDict, total=False):
+    privacyStatus: str
+
+
+class YouTubePlaylistItem(TypedDict, total=False):
+    kind: Literal['youtube#playlistItem']
+    etag: str
+    id: str
+    snippet: PlaylistItemSnippet
+    contentDetails: PlaylistItemContentDetails
+    status: PlaylistItemStatus
