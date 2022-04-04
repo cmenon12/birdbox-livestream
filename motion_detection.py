@@ -25,6 +25,7 @@ from googleapiclient.discovery import build
 from pytz import timezone
 
 import yt_livestream
+import yt_types
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -57,7 +58,7 @@ def get_complete_broadcasts(
     next_page_token = ""
     all_broadcasts = []
     while next_page_token is not None:
-        response = yt_livestream.YouTubeLivestream.execute_request(
+        response: yt_types.YouTubeLiveBroadcastList = yt_livestream.YouTubeLivestream.execute_request(
             service.liveBroadcasts().list(
                 part="id,status",
                 mine=True,
