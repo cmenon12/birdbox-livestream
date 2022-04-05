@@ -181,3 +181,109 @@ class YouTubePlaylistItem(TypedDict, total=False):
     snippet: PlaylistItemSnippet
     contentDetails: PlaylistItemContentDetails
     status: PlaylistItemStatus
+
+
+class VideoLocalization(TypedDict, total=False):
+    title: str
+    description: str
+
+
+class VideoLocalizationKeys(TypedDict, total=False):
+    pass
+
+
+class VideoSnippet(TypedDict, total=False):
+    publishedAt: str
+    channelId: str
+    title: str
+    description: str
+    thumbnails: ThumbnailKeys
+    channelTitle: str
+    tags: List[str]
+    categoryId: str
+    liveBroadcastContent: str
+    defaultLanguage: str
+    localized: VideoLocalization
+    defaultAudioLanguage: str
+
+
+class VideoRegionRestriction(TypedDict, total=False):
+    pass
+
+
+class VideoContentRating(TypedDict, total=False):
+    pass
+
+
+class VideoContentDetails(TypedDict, total=False):
+    pass
+
+
+class VideoStatus(TypedDict, total=False):
+    pass
+
+
+class VideoStatistics(TypedDict, total=False):
+    pass
+
+
+class VideoPlayer(TypedDict, total=False):
+    pass
+
+
+class VideoTopicDetails(TypedDict, total=False):
+    pass
+
+
+class VideoRecordingDetails(TypedDict, total=False):
+    pass
+
+
+class VideoFileDetails(TypedDict, total=False):
+    pass
+
+
+class VideoVideoStreams(TypedDict, total=False):
+    pass
+
+
+class VideoAudioStreams(TypedDict, total=False):
+    pass
+
+
+class VideoProcessingDetails(TypedDict, total=False):
+    pass
+
+
+class VideoProcessingProgress(TypedDict, total=False):
+    pass
+
+
+class VideoSuggestions(TypedDict, total=False):
+    pass
+
+
+class VideoTagSuggestion(TypedDict, total=False):
+    pass
+
+
+class VideoLiveStreamingDetails(TypedDict, total=False):
+    pass
+
+
+class YouTubeVideo(TypedDict, total=False):
+    kind: Literal['youtube#video']
+    etag: str
+    id: str
+    snippet: VideoSnippet
+    contentDetails: VideoContentDetails
+    status: VideoStatus
+    statistics: VideoStatistics
+    player: VideoPlayer
+    topicDetails: VideoTopicDetails
+    recordingDetails: VideoRecordingDetails
+    fileDetails: VideoFileDetails
+    processingDetails: VideoProcessingDetails
+    suggestions: VideoSuggestions
+    liveStreamingDetails: VideoLiveStreamingDetails
+    localizations: VideoLocalizationKeys
