@@ -332,8 +332,7 @@ class YouTubeLivestream(YouTube):
 
     def schedule_broadcast(
             self,
-            start_time: datetime = datetime.now(
-                tz=TIMEZONE)) -> dict:
+            start_time: Optional[datetime] = None) -> dict:
         """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
@@ -344,6 +343,10 @@ class YouTubeLivestream(YouTube):
 
         LOGGER.info("Scheduling the broadcast...")
         LOGGER.info(locals())
+
+        # Use now if not specified
+        if not start_time:
+            start_time = datetime.now(tz=TIMEZONE)
 
         # Stop if a broadcast already exists at this time
         if start_time in self.get_broadcasts().keys():
