@@ -17,7 +17,7 @@ from typing import Tuple, List
 
 import dvr_scan
 import googleapiclient
-import humanize as humanize
+import humanize
 import send2trash
 import yt_dlp
 from dvr_scan.timecode import FrameTimecode
@@ -25,6 +25,7 @@ from googleapiclient.discovery import build
 from pytz import timezone
 
 import yt_livestream
+import yt_types
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -57,7 +58,7 @@ def get_complete_broadcasts(
     next_page_token = ""
     all_broadcasts = []
     while next_page_token is not None:
-        response = yt_livestream.YouTubeLivestream.execute_request(
+        response: yt_types.YouTubeLiveBroadcastList = yt_livestream.YouTubeLivestream.execute_request(
             service.liveBroadcasts().list(
                 part="id,status",
                 mine=True,
@@ -170,33 +171,33 @@ def update_motion_status(
     LOGGER.info(locals())
 
     # Get the existing snippet details
-    video = yt_livestream.YouTubeLivestream.execute_request(
+    videos: yt_types.YouTubeVideoList = yt_livestream.YouTubeLivestream.execute_request(
         service.videos().list(id=video_id, part="id,snippet"))
-    LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+    LOGGER.debug("Videos is: \n%s.", json.dumps(videos, indent=4))
 
     # Prepare a new title
     if "No motion" in motion_desc:
-        title = f"{video['items'][0]['snippet']['title']} (no motion)"
+        title = f"{videos['items'][0]['snippet']['title']} (no motion)"
     else:
         count = motion_desc.count(" for ")
         if count == 1:
-            title = f"{video['items'][0]['snippet']['title']} ({count} action)"
+            title = f"{videos['items'][0]['snippet']['title']} ({count} action)"
         else:
-            title = f"{video['items'][0]['snippet']['title']} ({count} actions)"
+            title = f"{videos['items'][0]['snippet']['title']} ({count} actions)"
 
     # Prepare the body
     body = {"id": video_id, "snippet": {}}
-    body["snippet"]["categoryId"] = video["items"][0]["snippet"]["categoryId"]
-    body["snippet"]["tags"] = video["items"][0]["snippet"].get("tags", [])
-    body["snippet"]["description"] = f"{video['items'][0]['snippet']['description']} {motion_desc}"
+    body["snippet"]["categoryId"] = videos["items"][0]["snippet"]["categoryId"]
+    body["snippet"]["tags"] = videos["items"][0]["snippet"].get("tags", [])
+    body["snippet"]["description"] = f"{videos['items'][0]['snippet']['description']} {motion_desc}"
     body["snippet"]["title"] = title
-    body["snippet"]["defaultLanguage"] = video["items"][0]["snippet"]["defaultLanguage"]
+    body["snippet"]["defaultLanguage"] = videos["items"][0]["snippet"]["defaultLanguage"]
 
     LOGGER.debug("Body is: \n%s.", body)
 
     # Update it
     LOGGER.debug("Updating the video metadata...")
-    video = yt_livestream.YouTubeLivestream.execute_request(
+    video: yt_types.YouTubeVideo = yt_livestream.YouTubeLivestream.execute_request(
         service.videos().update(part="id,snippet", body=body))
     LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
