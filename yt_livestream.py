@@ -601,26 +601,26 @@ class YouTubeLivestream(YouTube):
         LOGGER.info(locals())
 
         # Get the existing snippet details
-        video = self.execute_request(self.get_service().videos().list(
+        videos: yt_types.YouTubeVideoList = self.execute_request(self.get_service().videos().list(
             id=video_id,
             part="id,snippet"
         ))
-        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+        LOGGER.debug("Videos is: \n%s.", json.dumps(videos, indent=4))
 
         # Prepare the body
         body = {"id": video_id, "snippet": {}}
         body["snippet"]["categoryId"] = self.config["category_id"]
         body["snippet"]["tags"] = json.loads(self.config["tags"])
-        body["snippet"]["description"] = description if description is not None else video["items"][0]["snippet"][
+        body["snippet"]["description"] = description if description is not None else videos["items"][0]["snippet"][
             "description"]
-        body["snippet"]["title"] = video["items"][0]["snippet"]["title"]
+        body["snippet"]["title"] = videos["items"][0]["snippet"]["title"]
         body["snippet"]["defaultLanguage"] = "en-GB"
 
         LOGGER.debug("Body is: \n%s.", body)
 
         # Update it
         LOGGER.debug("Updating the video metadata...")
-        video = self.execute_request(self.get_service().videos().update(
+        video: yt_types.YouTubeVideo = self.execute_request(self.get_service().videos().update(
             part="id,snippet",
             body=body
         ))

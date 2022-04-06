@@ -1,4 +1,4 @@
-from typing import TypedDict, Literal, List
+from typing import TypedDict, Literal, List, Dict, Union
 
 
 class Thumbnail(TypedDict, total=False):
@@ -15,12 +15,15 @@ class ThumbnailKeys(TypedDict, total=False):
     maxres: Thumbnail
 
 
-class BroadcastSnippet(TypedDict, total=False):
+class Snippet(TypedDict, total=False):
     publishedAt: str
     channelId: str
     title: str
     description: str
     thumbnails: ThumbnailKeys
+
+
+class BroadcastSnippet(Snippet):
     scheduledStartTime: str
     scheduledEndTime: str
     actualStartTime: str
@@ -188,16 +191,7 @@ class VideoLocalization(TypedDict, total=False):
     description: str
 
 
-class VideoLocalizationKeys(TypedDict, total=False):
-    pass
-
-
-class VideoSnippet(TypedDict, total=False):
-    publishedAt: str
-    channelId: str
-    title: str
-    description: str
-    thumbnails: ThumbnailKeys
+class VideoSnippet(Snippet):
     channelTitle: str
     tags: List[str]
     categoryId: str
@@ -207,83 +201,28 @@ class VideoSnippet(TypedDict, total=False):
     defaultAudioLanguage: str
 
 
-class VideoRegionRestriction(TypedDict, total=False):
-    pass
-
-
-class VideoContentRating(TypedDict, total=False):
-    pass
-
-
-class VideoContentDetails(TypedDict, total=False):
-    pass
-
-
-class VideoStatus(TypedDict, total=False):
-    pass
-
-
-class VideoStatistics(TypedDict, total=False):
-    pass
-
-
-class VideoPlayer(TypedDict, total=False):
-    pass
-
-
-class VideoTopicDetails(TypedDict, total=False):
-    pass
-
-
-class VideoRecordingDetails(TypedDict, total=False):
-    pass
-
-
-class VideoFileDetails(TypedDict, total=False):
-    pass
-
-
-class VideoVideoStreams(TypedDict, total=False):
-    pass
-
-
-class VideoAudioStreams(TypedDict, total=False):
-    pass
-
-
-class VideoProcessingDetails(TypedDict, total=False):
-    pass
-
-
-class VideoProcessingProgress(TypedDict, total=False):
-    pass
-
-
-class VideoSuggestions(TypedDict, total=False):
-    pass
-
-
-class VideoTagSuggestion(TypedDict, total=False):
-    pass
-
-
-class VideoLiveStreamingDetails(TypedDict, total=False):
-    pass
-
-
 class YouTubeVideo(TypedDict, total=False):
     kind: Literal['youtube#video']
     etag: str
     id: str
     snippet: VideoSnippet
-    contentDetails: VideoContentDetails
-    status: VideoStatus
-    statistics: VideoStatistics
-    player: VideoPlayer
-    topicDetails: VideoTopicDetails
-    recordingDetails: VideoRecordingDetails
-    fileDetails: VideoFileDetails
-    processingDetails: VideoProcessingDetails
-    suggestions: VideoSuggestions
-    liveStreamingDetails: VideoLiveStreamingDetails
-    localizations: VideoLocalizationKeys
+    contentDetails: Dict[str, Union[str, bool, Dict[str, Union[str, List[str]]],]]
+    status: Dict[str, Union[str, bool]]
+    statistics: Dict[str, int]
+    player: Dict[str, Union[str, int]]
+    topicDetails: Dict[str, List[str]]
+    recordingDetails: Dict[str, str]
+    fileDetails: Dict[str, Union[str, int, List[Dict[str, Union[int, float, str]]]]]
+    processingDetails: Dict[str, Union[str, Dict[str, int]]]
+    suggestions: Dict[str, Union[List[str], Dict[str, Union[str, List[str]]]]]
+    liveStreamingDetails: Dict[str, Union[str, int]]
+    localizations: Dict[str, Dict[str, str]]
+
+
+class YouTubeVideoList(TypedDict, total=False):
+    kind: Literal['youtube#videoListResponse']
+    etag: str
+    nextPageToken: str
+    prevPageToken: str
+    pageInfo: PageInfo
+    items: List[YouTubeVideo]
