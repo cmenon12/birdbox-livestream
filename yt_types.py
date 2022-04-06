@@ -146,6 +146,15 @@ class YouTubeLiveStream(TypedDict, total=False):
     contentDetails: StreamContentDetails
 
 
+class YouTubeLiveStreamList(TypedDict, total=False):
+    kind: Literal['youtube#liveStreamListResponse']
+    etag: str
+    nextPageToken: str
+    prevPageToken: str
+    pageInfo: PageInfo
+    items: List[YouTubeLiveStream]
+
+
 class PlaylistItemResourceId(TypedDict, total=False):
     kind: str
     videoId: str

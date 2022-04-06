@@ -579,7 +579,7 @@ class YouTubeLivestream(YouTube):
         :rtype: yt_types.StreamStatus
         """
 
-        streams = self.execute_request(self.get_service().liveStreams().list(
+        streams: yt_types.YouTubeLiveStreamList = self.execute_request(self.get_service().liveStreams().list(
             id=self.get_stream()["id"],
             part="status"
         ))
