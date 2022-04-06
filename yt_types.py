@@ -215,13 +215,15 @@ class YouTubeVideo(TypedDict, total=False):
     etag: str
     id: str
     snippet: VideoSnippet
-    contentDetails: Dict[str, Union[str, bool, Dict[str, Union[str, List[str]]],]]
+    contentDetails: Dict[str, Union[str, bool,
+                                    Dict[str, Union[str, List[str]]],]]
     status: Dict[str, Union[str, bool]]
     statistics: Dict[str, int]
     player: Dict[str, Union[str, int]]
     topicDetails: Dict[str, List[str]]
     recordingDetails: Dict[str, str]
-    fileDetails: Dict[str, Union[str, int, List[Dict[str, Union[int, float, str]]]]]
+    fileDetails: Dict[str, Union[str, int,
+                                 List[Dict[str, Union[int, float, str]]]]]
     processingDetails: Dict[str, Union[str, Dict[str, int]]]
     suggestions: Dict[str, Union[List[str], Dict[str, Union[str, List[str]]]]]
     liveStreamingDetails: Dict[str, Union[str, int]]

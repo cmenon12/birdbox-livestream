@@ -109,7 +109,7 @@ class YouTube:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     CLIENT_SECRET_FILE, SCOPES,
                     redirect_uri="urn:ietf:wg:oauth:2.0:oob")
-                auth_url, _ = flow.authorisation_url(prompt="consent")
+                auth_url, _ = flow.authorization_url(prompt="consent")
                 print(
                     f"Please visit this URL to authorise this application: {auth_url}")
                 if auth_type is AuthorisationTypes.PUSHBULLET and str(
@@ -267,13 +267,16 @@ class YouTubeLivestream(YouTube):
 
     def __init__(self, config: configparser.SectionProxy):
 
-        self.config = config
+        super().__init__(config)
 
         self.live_stream: Optional[yt_types.YouTubeLiveStream] = None
         self.week_playlist: Optional[yt_types.YouTubePlaylist] = None
-        self.scheduled_broadcasts: Dict[datetime, yt_types.YouTubeLiveBroadcast] = {}
-        self.finished_broadcasts: Dict[datetime, yt_types.YouTubeLiveBroadcast] = {}
-        self.live_broadcasts: Dict[datetime, yt_types.YouTubeLiveBroadcast] = {}
+        self.scheduled_broadcasts: Dict[datetime,
+                                        yt_types.YouTubeLiveBroadcast] = {}
+        self.finished_broadcasts: Dict[datetime,
+                                       yt_types.YouTubeLiveBroadcast] = {}
+        self.live_broadcasts: Dict[datetime,
+                                   yt_types.YouTubeLiveBroadcast] = {}
 
     def get_stream(self) -> yt_types.YouTubeLiveStream:
         """Gets the livestream, creating it if needed.
@@ -292,21 +295,18 @@ class YouTubeLivestream(YouTube):
 
         # Create a new livestream
         LOGGER.debug("Creating a new stream...")
-        stream: yt_types.YouTubeLiveStream = self.execute_request(self.get_service().liveStreams().insert(
-            part="snippet,cdn,contentDetails,id,status",
-            body={
-                "cdn": {
-                    "frameRate": "variable",
-                    "ingestionType": "rtmp",
-                    "resolution": "variable"
-                },
-                "contentDetails": {
-                    "isReusable": True
-                },
-                "snippet": {
-                    "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).isoformat()}"
-                }
-            }))
+        stream: yt_types.YouTubeLiveStream = self.execute_request(
+            self.get_service().liveStreams().insert(
+                part="snippet,cdn,contentDetails,id,status",
+                body={
+                    "cdn": {
+                        "frameRate": "variable",
+                        "ingestionType": "rtmp",
+                        "resolution": "variable"},
+                    "contentDetails": {
+                        "isReusable": True},
+                    "snippet": {
+                        "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).isoformat()}"}}))
         LOGGER.debug("Stream is: \n%s.", json.dumps(stream, indent=4))
 
         # Save and return it
@@ -323,7 +323,8 @@ class YouTubeLivestream(YouTube):
 
         LOGGER.info("Getting the livestream URL...")
 
-        ingestion_info: yt_types.StreamIngestionInfo = self.get_stream()['cdn']['ingestionInfo']
+        ingestion_info: yt_types.StreamIngestionInfo = self.get_stream()[
+            'cdn']['ingestionInfo']
         url = f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
         LOGGER.debug("Livestream URL is %s.", url)
         LOGGER.info("Livestream URL fetched and returned successfully!\n")
@@ -362,7 +363,8 @@ class YouTubeLivestream(YouTube):
         # Round the end time to the nearest 6 hours
         end_time = start_time + timedelta(minutes=duration_mins)
         LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
-        new_hour = 0 if round(end_time.hour / 6) * 6 >= 24 else round(end_time.hour / 6) * 6
+        new_hour = 0 if round(end_time.hour / 6) * \
+                        6 >= 24 else round(end_time.hour / 6) * 6
         end_time = end_time.replace(second=0, microsecond=0, minute=0,
                                     hour=new_hour)
         LOGGER.debug(
@@ -375,31 +377,27 @@ class YouTubeLivestream(YouTube):
 
         # Schedule a new broadcast
         LOGGER.debug("Scheduling a new broadcast...")
-        broadcast: yt_types.YouTubeLiveBroadcast = self.execute_request(self.get_service().liveBroadcasts().insert(
-            part="id,snippet,contentDetails,status",
-            body={
-                "contentDetails": {
-                    "enableAutoStart": False,
-                    "enableAutoStop": False,
-                    "enableClosedCaptions": False,
-                    "enableDvr": True,
-                    "recordFromStart": True,
-                    "startWithSlate": False,
-                    "monitorStream": {
-                        "enableMonitorStream": False
-                    }
-                },
-                "snippet": {
-                    "scheduledStartTime": start_time.isoformat(),
-                    "scheduledEndTime": end_time.isoformat(),
-                    "title": f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}",
-                    "description": description
-                },
-                "status": {
-                    "privacyStatus": self.config["privacy_status"],
-                    "selfDeclaredMadeForKids": False
-                }
-            }))
+        broadcast: yt_types.YouTubeLiveBroadcast = self.execute_request(
+            self.get_service().liveBroadcasts().insert(
+                part="id,snippet,contentDetails,status",
+                body={
+                    "contentDetails": {
+                        "enableAutoStart": False,
+                        "enableAutoStop": False,
+                        "enableClosedCaptions": False,
+                        "enableDvr": True,
+                        "recordFromStart": True,
+                        "startWithSlate": False,
+                        "monitorStream": {
+                            "enableMonitorStream": False}},
+                    "snippet": {
+                        "scheduledStartTime": start_time.isoformat(),
+                        "scheduledEndTime": end_time.isoformat(),
+                        "title": f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}",
+                        "description": description},
+                    "status": {
+                        "privacyStatus": self.config["privacy_status"],
+                        "selfDeclaredMadeForKids": False}}))
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         # Add it to the playlist
@@ -413,7 +411,9 @@ class YouTubeLivestream(YouTube):
         LOGGER.info("Broadcast scheduled successfully!\n")
         return broadcast
 
-    def start_broadcast(self, start_time: datetime) -> yt_types.YouTubeLiveBroadcast:
+    def start_broadcast(
+            self,
+            start_time: datetime) -> yt_types.YouTubeLiveBroadcast:
         """Start the broadcast by binding the stream to it.
 
         :param start_time: when the broadcast should start
@@ -505,7 +505,9 @@ class YouTubeLivestream(YouTube):
         LOGGER.info("Broadcast started successfully!\n")
         return broadcast
 
-    def end_broadcast(self, start_time: datetime) -> yt_types.YouTubeLiveBroadcast:
+    def end_broadcast(
+            self,
+            start_time: datetime) -> yt_types.YouTubeLiveBroadcast:
         """End the broadcast by changing it's state to complete.
 
         :param start_time: when the broadcast should start
@@ -552,7 +554,9 @@ class YouTubeLivestream(YouTube):
         LOGGER.info("Broadcast ended successfully!\n")
         return self.finished_broadcasts[start_time]
 
-    def get_broadcasts(self, category: BroadcastTypes = None) -> Dict[datetime, yt_types.YouTubeLiveBroadcast]:
+    def get_broadcasts(self,
+                       category: BroadcastTypes = None) -> Dict[datetime,
+                                                                yt_types.YouTubeLiveBroadcast]:
         """Returns a dict with the broadcasts
 
         :param category: the category of broadcasts if not all
@@ -579,10 +583,9 @@ class YouTubeLivestream(YouTube):
         :rtype: yt_types.StreamStatus
         """
 
-        streams: yt_types.YouTubeLiveStreamList = self.execute_request(self.get_service().liveStreams().list(
-            id=self.get_stream()["id"],
-            part="status"
-        ))
+        streams: yt_types.YouTubeLiveStreamList = self.execute_request(
+            self.get_service().liveStreams().list(
+                id=self.get_stream()["id"], part="status"))
 
         LOGGER.debug("Stream status is: %s.", streams["items"][0]["status"])
         return streams["items"][0]["status"]
@@ -601,10 +604,8 @@ class YouTubeLivestream(YouTube):
         LOGGER.info(locals())
 
         # Get the existing snippet details
-        videos: yt_types.YouTubeVideoList = self.execute_request(self.get_service().videos().list(
-            id=video_id,
-            part="id,snippet"
-        ))
+        videos: yt_types.YouTubeVideoList = self.execute_request(
+            self.get_service().videos().list(id=video_id, part="id,snippet"))
         LOGGER.debug("Videos is: \n%s.", json.dumps(videos, indent=4))
 
         # Prepare the body
@@ -620,10 +621,8 @@ class YouTubeLivestream(YouTube):
 
         # Update it
         LOGGER.debug("Updating the video metadata...")
-        video: yt_types.YouTubeVideo = self.execute_request(self.get_service().videos().update(
-            part="id,snippet",
-            body=body
-        ))
+        video: yt_types.YouTubeVideo = self.execute_request(
+            self.get_service().videos().update(part="id,snippet", body=body))
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
         LOGGER.info("Video metadata updated successfully!")

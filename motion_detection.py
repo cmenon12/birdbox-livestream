@@ -17,7 +17,7 @@ from typing import Tuple, List
 
 import dvr_scan
 import googleapiclient
-import humanize as humanize
+import humanize
 import send2trash
 import yt_dlp
 from dvr_scan.timecode import FrameTimecode
