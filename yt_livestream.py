@@ -270,7 +270,7 @@ class YouTubeLivestream(YouTube):
         self.config = config
 
         self.live_stream: Optional[yt_types.YouTubeLiveStream] = None
-        self.week_playlist = None
+        self.week_playlist: Optional[yt_types.YouTubePlaylist] = None
         self.scheduled_broadcasts: Dict[datetime, yt_types.YouTubeLiveBroadcast] = {}
         self.finished_broadcasts: Dict[datetime, yt_types.YouTubeLiveBroadcast] = {}
         self.live_broadcasts: Dict[datetime, yt_types.YouTubeLiveBroadcast] = {}
@@ -657,7 +657,7 @@ class YouTubeLivestream(YouTube):
             next_page_token = ""
             all_playlists = []
             while next_page_token is not None:
-                response = self.execute_request(
+                response: yt_types.YouTubePlaylistList = self.execute_request(
                     self.get_service().playlists().list(
                         part="id,snippet",
                         mine=True,
@@ -684,7 +684,7 @@ class YouTubeLivestream(YouTube):
                 # Create a new playlist
                 LOGGER.debug("Creating a new playlist...")
                 description = f"This playlist has videos of the birdbox from {(start_time - timedelta(days=start_time.weekday())).strftime('%a %d %B')} to {(start_time - timedelta(days=start_time.weekday() - 6)).strftime('%a %d %B')}. "
-                self.week_playlist = self.execute_request(
+                self.week_playlist: yt_types.YouTubePlaylist = self.execute_request(
                     self.get_service().playlists().insert(
                         part="id,snippet,status", body={
                             "snippet": {

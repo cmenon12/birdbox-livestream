@@ -182,7 +182,7 @@ class PlaylistItemContentDetails(TypedDict, total=False):
     videoPublishedAt: str
 
 
-class PlaylistItemStatus(TypedDict, total=False):
+class Status(TypedDict, total=False):
     privacyStatus: str
 
 
@@ -192,10 +192,10 @@ class YouTubePlaylistItem(TypedDict, total=False):
     id: str
     snippet: PlaylistItemSnippet
     contentDetails: PlaylistItemContentDetails
-    status: PlaylistItemStatus
+    status: Status
 
 
-class VideoLocalization(TypedDict, total=False):
+class Localization(TypedDict, total=False):
     title: str
     description: str
 
@@ -206,7 +206,7 @@ class VideoSnippet(Snippet):
     categoryId: str
     liveBroadcastContent: str
     defaultLanguage: str
-    localized: VideoLocalization
+    localized: Localization
     defaultAudioLanguage: str
 
 
@@ -235,3 +235,37 @@ class YouTubeVideoList(TypedDict, total=False):
     prevPageToken: str
     pageInfo: PageInfo
     items: List[YouTubeVideo]
+
+
+class PlaylistSnippet(Snippet):
+    channelTitle: str
+    defaultLanguage: str
+    localized: Localization
+
+
+class PlaylistContentDetails(TypedDict, total=False):
+    itemCount: int
+
+
+class PlaylistPlayer(TypedDict, total=False):
+    embedHtml: str
+
+
+class YouTubePlaylist(TypedDict, total=False):
+    kind: Literal['youtube#playlist']
+    etag: str
+    id: str
+    snippet: PlaylistSnippet
+    status: Status
+    contentDetails: PlaylistContentDetails
+    player: PlaylistPlayer
+    localizations: Dict[str, Dict[str, str]]
+
+
+class YouTubePlaylistList(TypedDict, total=False):
+    kind: Literal['youtube#playlistListResponse']
+    etag: str
+    nextPageToken: str
+    prevPageToken: str
+    pageInfo: PageInfo
+    items: List[YouTubePlaylist]
