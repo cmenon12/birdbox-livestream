@@ -339,7 +339,7 @@ class YouTubeLivestream(YouTube):
         """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
-        :type start_time: datetime
+        :type start_time: Optional[datetime]
         :return: the YouTube liveBroadcast resource
         :rtype: yt_types.YouTubeLiveBroadcast
         """
