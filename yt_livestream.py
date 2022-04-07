@@ -61,6 +61,9 @@ TOKEN_PICKLE_FILE = "token.pickle"
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
 
+# The max broadcasts to schedule in advance
+MAX_SCHEDULED_BROADCASTS = 2
+
 
 class AuthorisationTypes(Enum):
     """The possible types for API authorisation"""
@@ -332,15 +335,11 @@ class YouTubeLivestream(YouTube):
 
     def schedule_broadcast(
             self,
-            start_time: datetime = datetime.now(
-                tz=TIMEZONE),
-            duration_mins: int = 0) -> yt_types.YouTubeLiveBroadcast:
+            start_time: Optional[datetime] = None) -> yt_types.YouTubeLiveBroadcast:
         """Schedules the live broadcast.
 
         :param start_time: when the broadcast should start
-        :type start_time: datetime.datetime, optional
-        :param duration_mins: how long the broadcast will last for in minutes
-        :type duration_mins: int, optional
+        :type start_time: Optional[datetime]
         :return: the YouTube liveBroadcast resource
         :rtype: yt_types.YouTubeLiveBroadcast
         """
@@ -348,9 +347,9 @@ class YouTubeLivestream(YouTube):
         LOGGER.info("Scheduling the broadcast...")
         LOGGER.info(locals())
 
-        if duration_mins <= 0:
-            duration_mins = int(self.config["default_duration"])
-            LOGGER.debug("Using default duration of %d.", duration_mins)
+        # Use now if not specified
+        if not start_time:
+            start_time = datetime.now(tz=TIMEZONE)
 
         # Stop if a broadcast already exists at this time
         if start_time in self.get_broadcasts().keys():
@@ -361,12 +360,19 @@ class YouTubeLivestream(YouTube):
             return self.get_broadcasts()[start_time]
 
         # Round the end time to the nearest 6 hours
-        end_time = start_time + timedelta(minutes=duration_mins)
+        end_time = start_time.astimezone(TIMEZONE) + timedelta(minutes=360)
         LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
-        new_hour = 0 if round(end_time.hour / 6) * \
-                        6 >= 24 else round(end_time.hour / 6) * 6
-        end_time = end_time.replace(second=0, microsecond=0, minute=0,
-                                    hour=new_hour)
+
+        # If it's going to be tomorrow at midnight
+        if round(end_time.hour / 6) * 6 >= 24:
+            end_time = end_time.replace(second=0, microsecond=0, minute=0,
+                                        hour=0)
+            end_time += timedelta(days=1)
+
+        # Otherwise just round
+        else:
+            end_time = end_time.replace(second=0, microsecond=0, minute=0,
+                                        hour=round(end_time.hour / 6) * 6)
         LOGGER.debug(
             "End time to the nearest hour is %s.",
             end_time.isoformat())
@@ -417,7 +423,7 @@ class YouTubeLivestream(YouTube):
         """Start the broadcast by binding the stream to it.
 
         :param start_time: when the broadcast should start
-        :type start_time: datetime.datetime, optional
+        :type start_time: datetime
         :return: the updated YouTube liveBroadcast resource
         :rtype: yt_types.YouTubeLiveBroadcast
         :raises ValueError: if the broadcast at that times doesn't exist
@@ -493,7 +499,7 @@ class YouTubeLivestream(YouTube):
             description = f"{self.live_broadcasts[start_time]['snippet']['description']} Watch the next part here: https://youtu.be/{broadcasts[end_time]['id']}."
             LOGGER.debug("Updating the description to %s.", description)
             self.update_video_metadata(
-                self.live_broadcasts[start_time]["id"], description)
+                self.live_broadcasts[start_time]["id"], description=description)
         else:
             LOGGER.debug(
                 "No next video found (none starting at %s).",
@@ -511,7 +517,7 @@ class YouTubeLivestream(YouTube):
         """End the broadcast by changing it's state to complete.
 
         :param start_time: when the broadcast should start
-        :type start_time: datetime.datetime, optional
+        :type start_time: datetime
         :return: the updated YouTube liveBroadcast resource
         :rtype: yt_types.YouTubeLiveBroadcast
         :raises ValueError: if the broadcast at that times doesn't exist
@@ -579,7 +585,7 @@ class YouTubeLivestream(YouTube):
     def get_stream_status(self) -> yt_types.StreamStatus:
         """Fetch and return the status of the livestream.
 
-        :return: the status of the livestream.
+        :return: the status of the livestream
         :rtype: yt_types.StreamStatus
         """
 
@@ -593,11 +599,16 @@ class YouTubeLivestream(YouTube):
     def update_video_metadata(
             self,
             video_id: str,
+            title: Optional[str] = None,
             description: Optional[str] = None) -> None:
         """Update standard video metadata.
 
         :param video_id: the ID of the video to update
         :type video_id: str
+        :param title: the new title
+        :type title: Optional[str]
+        :param description: the new description
+        :type description: Optional[str]
         """
 
         LOGGER.info("Updating the video metadata...")
@@ -614,7 +625,7 @@ class YouTubeLivestream(YouTube):
         body["snippet"]["tags"] = json.loads(self.config["tags"])
         body["snippet"]["description"] = description if description is not None else videos["items"][0]["snippet"][
             "description"]
-        body["snippet"]["title"] = videos["items"][0]["snippet"]["title"]
+        body["snippet"]["title"] = title if title is not None else videos["items"][0]["snippet"]["title"]
         body["snippet"]["defaultLanguage"] = "en-GB"
 
         LOGGER.debug("Body is: \n%s.", body)
@@ -626,6 +637,88 @@ class YouTubeLivestream(YouTube):
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
 
         LOGGER.info("Video metadata updated successfully!")
+
+    def update_video_start_time(self, video_id: str,
+                                start_time: Optional[datetime] = None,
+                                fail_silently: bool = True) -> None:
+        """Update the video start time, leaving everything else in place.
+
+        :param video_id: the ID of the video to update
+        :type video_id: str
+        :param start_time: the new start time, otherwise now
+        :type start_time: Optional[datetime]
+        :param fail_silently: whether to skip quietly if it can't be replaced
+        :type fail_silently: bool
+        """
+
+        LOGGER.info("Updating the video start time...")
+        LOGGER.info(locals())
+
+        # Use now if not specified
+        if not start_time:
+            start_time = datetime.now(tz=TIMEZONE)
+
+        # Get the existing description
+        video = self.execute_request(self.get_service().videos().list(
+            id=video_id,
+            part="id,snippet"
+        ))
+        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+        description: str = video["items"][0]["snippet"]["description"]
+
+        # Find and replace it, update it
+        if "starting on" in description:
+            old_start_time = description[40:59]
+            new_description = description.replace(old_start_time, start_time.strftime("%a %d %b at %H.%M"))
+            new_title = f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}"
+            self.update_video_metadata(video_id, title=new_title, description=new_description)
+
+        # If asked then raise exception
+        elif fail_silently is False:
+            raise RuntimeError("Could not update start time!")
+
+        LOGGER.info("Video start time updated successfully!\n")
+
+    def update_video_end_time(self, video_id: str,
+                              end_time: Optional[datetime] = None,
+                              fail_silently: bool = True) -> None:
+        """Set the video end time, leaving everything else in place.
+
+        :param video_id: the ID of the video to update
+        :type video_id: str
+        :param end_time: the new end time, otherwise now
+        :type end_time: Optional[datetime]
+        :param fail_silently: whether to skip quietly if it can't be replaced
+        :type fail_silently: bool
+        """
+
+        LOGGER.info("Updating the video end time...")
+        LOGGER.info(locals())
+
+        # Use now if not specified
+        if not end_time:
+            end_time = datetime.now(tz=TIMEZONE)
+
+        # Get the existing description
+        video = self.execute_request(self.get_service().videos().list(
+            id=video_id,
+            part="id,snippet"
+        ))
+        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
+        description: str = video["items"][0]["snippet"]["description"]
+
+        # Find and replace it, update it
+        if "ending at" in description:
+            old_end_time = description[74:79]
+            new_description = description.replace(old_end_time,
+                                                  end_time.strftime("%H.%M"))
+            self.update_video_metadata(video_id, description=new_description)
+
+        # If asked then raise exception
+        elif fail_silently is False:
+            raise RuntimeError("Could not update end time!")
+
+        LOGGER.info("Video end time updated successfully!\n")
 
     def add_to_week_playlist(
             self,
@@ -711,6 +804,23 @@ class YouTubeLivestream(YouTube):
 
         LOGGER.info("Added the video to the week's playlist successfully!")
 
+    def get_broadcast_status(self, video_id: str) -> dict:
+        """Fetch and return the status of the broadcast.
+
+        :param video_id: the ID of the video to get
+        :type video_id: str
+        :return: the status of the broadcast
+        :rtype: dict
+        """
+
+        broadcast = self.execute_request(self.get_service().liveBroadcasts().list(
+            id=video_id,
+            part="status"
+        ))
+
+        LOGGER.debug("Broadcast status of %s is: %s.", video_id, broadcast["items"][0]["status"])
+        return broadcast["items"][0]["status"]
+
 
 def send_error_email(config: configparser.SectionProxy, trace: str,
                      filename: str) -> None:
@@ -782,7 +892,6 @@ def main():
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
     yt_config = parser["YouTubeLivestream"]
-    main_config = parser["yt_livestream"]
     email_config = parser["email"]
 
     try:
@@ -810,9 +919,10 @@ def main():
 
             scheduled = yt.get_broadcasts(BroadcastTypes.SCHEDULED).copy()
             live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
+            now = datetime.now(tz=TIMEZONE)
 
             # Schedule broadcasts
-            if len(scheduled) < int(main_config["max_scheduled_broadcasts"]):
+            if len(scheduled) < int(MAX_SCHEDULED_BROADCASTS):
                 if len(scheduled) != 0:
                     last_start_time = max(scheduled.keys())
                 else:
@@ -820,15 +930,24 @@ def main():
                 last_broadcast = scheduled[last_start_time]
                 start_time = datetime.fromisoformat(
                     last_broadcast["snippet"]["scheduledEndTime"].replace(
-                        "Z", "+00:00"))
+                        "Z", "+00:00")).astimezone(TIMEZONE)
                 yt.schedule_broadcast(start_time)
 
             time.sleep(5)
 
             # Start broadcasts
             for start_time in scheduled.keys():
-                if start_time <= datetime.now(tz=TIMEZONE):
+                if start_time <= now:
                     yt.start_broadcast(start_time)
+
+                    # Wait until it's actually live
+                    status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
+                    while status != "live":
+                        status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
+                        time.sleep(20)
+
+                    # Update the start time
+                    yt.update_video_start_time(scheduled[start_time]["id"])
 
             time.sleep(5)
 
@@ -837,13 +956,14 @@ def main():
                 end_time = datetime.fromisoformat(
                     live[start_time]["snippet"]["scheduledEndTime"].replace(
                         "Z", "+00:00"))
-                if end_time <= datetime.now(tz=TIMEZONE):
+                if end_time <= now:
                     yt.end_broadcast(start_time)
+                    yt.update_video_end_time(live[start_time]["id"])
 
             time.sleep(5)
 
-            # If the time is divisible by 5, log the status
-            if datetime.now(tz=TIMEZONE).minute % 5 == 0:
+            # If the time is divisible by 5, log the stream status
+            if now.minute % 5 == 0:
                 try:
                     yt.get_stream_status()
                     time.sleep(60)
