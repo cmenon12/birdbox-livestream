@@ -362,7 +362,7 @@ if __name__ == "__main__":
 
     # Prepare the log
     Path("./logs").mkdir(parents=True, exist_ok=True)
-    log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
+    log_filename = f"birdbox-livestream-motion-detection-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
     log_format = "%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s"
     log_handler = logging.FileHandler(
         f"./logs/{log_filename}", mode="a", encoding="utf-8")

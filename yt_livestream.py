@@ -804,22 +804,22 @@ class YouTubeLivestream(YouTube):
 
         LOGGER.info("Added the video to the week's playlist successfully!")
 
-    def get_broadcast_status(self, video_id: str) -> dict:
+    def get_broadcast_status(self, video_id: str) -> yt_types.BroadcastStatus:
         """Fetch and return the status of the broadcast.
 
         :param video_id: the ID of the video to get
         :type video_id: str
         :return: the status of the broadcast
-        :rtype: dict
+        :rtype: yt_types.BroadcastStatus
         """
 
-        broadcast = self.execute_request(self.get_service().liveBroadcasts().list(
+        broadcasts: yt_types.YouTubeLiveBroadcastList = self.execute_request(self.get_service().liveBroadcasts().list(
             id=video_id,
             part="status"
         ))
 
-        LOGGER.debug("Broadcast status of %s is: %s.", video_id, broadcast["items"][0]["status"])
-        return broadcast["items"][0]["status"]
+        LOGGER.debug("Broadcast status of %s is: %s.", video_id, broadcasts["items"][0]["status"])
+        return broadcasts["items"][0]["status"]
 
 
 def send_error_email(config: configparser.SectionProxy, trace: str,
@@ -940,9 +940,9 @@ def main():
                 if start_time <= now:
                     yt.start_broadcast(start_time)
 
-                    # Wait until it's actually live
+                    # Wait until it's actually live (or otherwise done)
                     status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
-                    while status != "live":
+                    while status not in ("live", "complete", "revoked"):
                         status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
                         time.sleep(20)
 
@@ -984,7 +984,7 @@ if __name__ == "__main__":
 
     # Prepare the log
     Path("./logs").mkdir(parents=True, exist_ok=True)
-    log_filename = f"birdbox-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
+    log_filename = f"birdbox-livestream-yt-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
     logging.basicConfig(
         format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
         level=logging.DEBUG,
