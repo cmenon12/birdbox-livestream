@@ -1,4 +1,10 @@
-from typing import TypedDict, Literal, List, Dict, Union
+import sys
+from typing import List, Dict, Union
+
+if sys.version_info >= (3, 8):
+    from typing import TypedDict, Literal  # pylint: disable=no-name-in-module
+else:
+    from typing_extensions import TypedDict, Literal
 
 
 class Thumbnail(TypedDict, total=False):

@@ -11,3 +11,4 @@ progress_bar
 humanize
 Send2Trash
 pushbullet.py
+typing_extensions
