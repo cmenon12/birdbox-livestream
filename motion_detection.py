@@ -34,9 +34,6 @@ __license__ = "gpl-3.0"
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
 
-# File with the list of completed IDs
-SAVE_DATA_FILENAME = "save_data.json"
-
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
 
@@ -51,13 +48,13 @@ MOTION_DETECTION_PARAMS = {
 
 
 def get_complete_broadcasts(
-        service: googleapiclient.discovery.Resource) -> List[str]:
-    """Get a list of all complete broadcast IDs.
+        service: googleapiclient.discovery.Resource) -> List[yt_types.YouTubeLiveBroadcast]:
+    """Get a list of all complete broadcasts.
 
     :param service: the YouTube API service
     :type service: googleapiclient.discovery.Resource
-    :return: a list of IDs of complete broadcasts
-    :rtype: List[str]
+    :return: a list of complete broadcasts
+    :rtype: yt_types.YouTubeLiveBroadcast
     """
 
     LOGGER.info("Fetching the complete broadcasts...")
@@ -66,7 +63,7 @@ def get_complete_broadcasts(
     while next_page_token is not None:
         response: yt_types.YouTubeLiveBroadcastList = yt_livestream.YouTubeLivestream.execute_request(
             service.liveBroadcasts().list(
-                part="id,status",
+                part="id,snippet,status",
                 mine=True,
                 maxResults=50,
                 pageToken=next_page_token))
@@ -83,7 +80,7 @@ def get_complete_broadcasts(
     complete_broadcasts = []
     for item in all_broadcasts:
         if item["status"]["lifeCycleStatus"] == "complete":
-            complete_broadcasts.append(item["id"])
+            complete_broadcasts.append(item)
     LOGGER.debug("complete_broadcasts is: %s.", complete_broadcasts)
 
     LOGGER.info("Complete broadcasts fetched successfully!")
@@ -275,24 +272,15 @@ def main():
         yt.get_service()
 
         # Try and load the list of completed IDs
-        try:
-            with open(SAVE_DATA_FILENAME, "r") as file:
-                complete_broadcasts = json.load(file)
-            LOGGER.info("Loaded save data %s", complete_broadcasts)
-        except FileNotFoundError:
-            LOGGER.info(
-                "Could not find save data %s, using empty list.",
-                SAVE_DATA_FILENAME)
-            complete_broadcasts = []
 
         while True:
 
             # Find out which videos need processing
             new_ids = []
             new_complete_broadcasts = get_complete_broadcasts(yt.get_service())
-            for video_id in new_complete_broadcasts:
-                if video_id not in complete_broadcasts:
-                    new_ids.append(video_id)
+            for video in new_complete_broadcasts:
+                if "motion" not in video["snippet"]["description"].lower():
+                    new_ids.append(video["id"])
             LOGGER.debug("new_ids is: %s.", new_ids)
 
             # Process them
@@ -330,17 +318,6 @@ def main():
                             print(str(error))
                             print(traceback.format_exc())
                     print(f"Processed {video_id} successfully!\n")
-
-                    # Save the ID, as soon as it's done
-                    complete_broadcasts.append(video_id)
-                    with open(SAVE_DATA_FILENAME, "w") as file:
-                        json.dump(complete_broadcasts, file)
-                        LOGGER.debug(
-                            "Saved the save data to %s successfully.",
-                            SAVE_DATA_FILENAME)
-                        LOGGER.debug(
-                            "Saved save data is %s",
-                            complete_broadcasts)
 
             # Wait before repeating
             time.sleep(15 * 60)
