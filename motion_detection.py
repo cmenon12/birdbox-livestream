@@ -40,8 +40,14 @@ SAVE_DATA_FILENAME = "save_data.json"
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
 
-# The minimum length of the motion in seconds
-MIN_MOTION_DURATION = 3
+# All the motion detection parameters
+MOTION_DETECTION_PARAMS = {
+    "min_event_len": 30 * 3,
+    "time_pre_event": "0s",
+    "time_post_event": "0s",
+    "roi": [64, 54, 82, 54],  # Rectangle of form [x y w h] representing bounding box of subset of each frame to look at
+    "threshold": 0.5  # the threshold for motion 0 < t < 1, default 0.15
+}
 
 
 def get_complete_broadcasts(
@@ -110,18 +116,11 @@ def download_video(video_id: str) -> str:
     return filename
 
 
-def get_motion_timestamps(
-        filename: str,
-        roi: List[int],
-        threshold: float) -> str:
+def get_motion_timestamps(filename: str) -> str:
     """Detect motion and output a description of when it occurs.
 
     :param filename: the video file to search
     :type filename: str
-    :param roi: the [x y w h] to detect motion in
-    :type roi: List[int]
-    :param threshold: the threshold to detect motion
-    :type threshold: float
     :return: a description of the motion detected
     :rtype: str
     """
@@ -131,13 +130,13 @@ def get_motion_timestamps(
     output = ""
     scan = dvr_scan.scanner.ScanContext([filename])
     scan.set_event_params(
-        min_event_len=30 * MIN_MOTION_DURATION,
-        time_pre_event="0s",
-        time_post_event="0s"
+        min_event_len=MOTION_DETECTION_PARAMS["min_event_len"],
+        time_pre_event=MOTION_DETECTION_PARAMS["time_pre_event"],
+        time_post_event=MOTION_DETECTION_PARAMS["time_post_event"]
     )
     scan.set_detection_params(
-        roi=roi,
-        threshold=threshold
+        roi=MOTION_DETECTION_PARAMS["roi"],
+        threshold=MOTION_DETECTION_PARAMS["threshold"]
     )
     result: List[Tuple[FrameTimecode, FrameTimecode,
                        FrameTimecode]] = scan.scan_motion()
@@ -266,11 +265,7 @@ def main():
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
     yt_config = parser["YouTube"]
-    main_config = parser["motion_detection"]
     email_config = parser["email"]
-
-    roi = json.loads(main_config["roi"])
-    threshold = float(main_config["threshold"])
 
     try:
 
@@ -320,8 +315,7 @@ def main():
                             os.path.getsize(filename)))
 
                     # Run motion detection
-                    motion_desc = get_motion_timestamps(
-                        filename, roi, threshold)
+                    motion_desc = get_motion_timestamps(filename)
                     update_motion_status(
                         yt.get_service(), video_id, motion_desc)
                     if "No motion" not in motion_desc:
