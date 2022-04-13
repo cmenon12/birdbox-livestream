@@ -146,6 +146,7 @@ def get_motion_timestamps(filename: str) -> str:
         output = "\n\nMotion was detected at the following points:\n"
     for item in result:
         output += f" • {item[0].get_timecode(0)} for {humanize.naturaldelta(item[2].get_seconds())}.\n"
+    output += f"\n\nMOTION_DETECTION_PARAMS={MOTION_DETECTION_PARAMS}"
     LOGGER.debug("Output is: \n%s.", output)
 
     LOGGER.info("Motion detected successfully!")
