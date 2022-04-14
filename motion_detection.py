@@ -34,24 +34,27 @@ __license__ = "gpl-3.0"
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
 
-# File with the list of completed IDs
-SAVE_DATA_FILENAME = "save_data.json"
-
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
 
-# The minimum length of the motion in seconds
-MIN_MOTION_DURATION = 3
+# All the motion detection parameters
+MOTION_DETECTION_PARAMS = {
+    "min_event_len": 30 * 3,
+    "time_pre_event": "0s",
+    "time_post_event": "0s",
+    "roi": [64, 54, 82, 54],  # Rectangle of form [x y w h] representing bounding box of subset of each frame to look at
+    "threshold": 0.5  # the threshold for motion 0 < t < 1, default 0.15
+}
 
 
 def get_complete_broadcasts(
-        service: googleapiclient.discovery.Resource) -> List[str]:
-    """Get a list of all complete broadcast IDs.
+        service: googleapiclient.discovery.Resource) -> List[yt_types.YouTubeLiveBroadcast]:
+    """Get a list of all complete broadcasts.
 
     :param service: the YouTube API service
     :type service: googleapiclient.discovery.Resource
-    :return: a list of IDs of complete broadcasts
-    :rtype: List[str]
+    :return: a list of complete broadcasts
+    :rtype: yt_types.YouTubeLiveBroadcast
     """
 
     LOGGER.info("Fetching the complete broadcasts...")
@@ -60,7 +63,7 @@ def get_complete_broadcasts(
     while next_page_token is not None:
         response: yt_types.YouTubeLiveBroadcastList = yt_livestream.YouTubeLivestream.execute_request(
             service.liveBroadcasts().list(
-                part="id,status",
+                part="id,snippet,status",
                 mine=True,
                 maxResults=50,
                 pageToken=next_page_token))
@@ -77,7 +80,7 @@ def get_complete_broadcasts(
     complete_broadcasts = []
     for item in all_broadcasts:
         if item["status"]["lifeCycleStatus"] == "complete":
-            complete_broadcasts.append(item["id"])
+            complete_broadcasts.append(item)
     LOGGER.debug("complete_broadcasts is: %s.", complete_broadcasts)
 
     LOGGER.info("Complete broadcasts fetched successfully!")
@@ -110,18 +113,11 @@ def download_video(video_id: str) -> str:
     return filename
 
 
-def get_motion_timestamps(
-        filename: str,
-        roi: List[int],
-        threshold: float) -> str:
+def get_motion_timestamps(filename: str) -> str:
     """Detect motion and output a description of when it occurs.
 
     :param filename: the video file to search
     :type filename: str
-    :param roi: the [x y w h] to detect motion in
-    :type roi: List[int]
-    :param threshold: the threshold to detect motion
-    :type threshold: float
     :return: a description of the motion detected
     :rtype: str
     """
@@ -131,13 +127,13 @@ def get_motion_timestamps(
     output = ""
     scan = dvr_scan.scanner.ScanContext([filename])
     scan.set_event_params(
-        min_event_len=30 * MIN_MOTION_DURATION,
-        time_pre_event="0s",
-        time_post_event="0s"
+        min_event_len=MOTION_DETECTION_PARAMS["min_event_len"],
+        time_pre_event=MOTION_DETECTION_PARAMS["time_pre_event"],
+        time_post_event=MOTION_DETECTION_PARAMS["time_post_event"]
     )
     scan.set_detection_params(
-        roi=roi,
-        threshold=threshold
+        roi=MOTION_DETECTION_PARAMS["roi"],
+        threshold=MOTION_DETECTION_PARAMS["threshold"]
     )
     result: List[Tuple[FrameTimecode, FrameTimecode,
                        FrameTimecode]] = scan.scan_motion()
@@ -147,6 +143,7 @@ def get_motion_timestamps(
         output = "\n\nMotion was detected at the following points:\n"
     for item in result:
         output += f" • {item[0].get_timecode(0)} for {humanize.naturaldelta(item[2].get_seconds())}.\n"
+    output += f"\n\nMOTION_DETECTION_PARAMS={MOTION_DETECTION_PARAMS}"
     LOGGER.debug("Output is: \n%s.", output)
 
     LOGGER.info("Motion detected successfully!")
@@ -266,11 +263,7 @@ def main():
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
     yt_config = parser["YouTube"]
-    main_config = parser["motion_detection"]
     email_config = parser["email"]
-
-    roi = json.loads(main_config["roi"])
-    threshold = float(main_config["threshold"])
 
     try:
 
@@ -279,24 +272,15 @@ def main():
         yt.get_service()
 
         # Try and load the list of completed IDs
-        try:
-            with open(SAVE_DATA_FILENAME, "r") as file:
-                complete_broadcasts = json.load(file)
-            LOGGER.info("Loaded save data %s", complete_broadcasts)
-        except FileNotFoundError:
-            LOGGER.info(
-                "Could not find save data %s, using empty list.",
-                SAVE_DATA_FILENAME)
-            complete_broadcasts = []
 
         while True:
 
             # Find out which videos need processing
             new_ids = []
             new_complete_broadcasts = get_complete_broadcasts(yt.get_service())
-            for video_id in new_complete_broadcasts:
-                if video_id not in complete_broadcasts:
-                    new_ids.append(video_id)
+            for video in new_complete_broadcasts:
+                if "motion" not in video["snippet"]["description"].lower():
+                    new_ids.append(video["id"])
             LOGGER.debug("new_ids is: %s.", new_ids)
 
             # Process them
@@ -320,8 +304,7 @@ def main():
                             os.path.getsize(filename)))
 
                     # Run motion detection
-                    motion_desc = get_motion_timestamps(
-                        filename, roi, threshold)
+                    motion_desc = get_motion_timestamps(filename)
                     update_motion_status(
                         yt.get_service(), video_id, motion_desc)
                     if "No motion" not in motion_desc:
@@ -335,17 +318,6 @@ def main():
                             print(str(error))
                             print(traceback.format_exc())
                     print(f"Processed {video_id} successfully!\n")
-
-                    # Save the ID, as soon as it's done
-                    complete_broadcasts.append(video_id)
-                    with open(SAVE_DATA_FILENAME, "w") as file:
-                        json.dump(complete_broadcasts, file)
-                        LOGGER.debug(
-                            "Saved the save data to %s successfully.",
-                            SAVE_DATA_FILENAME)
-                        LOGGER.debug(
-                            "Saved save data is %s",
-                            complete_broadcasts)
 
             # Wait before repeating
             time.sleep(15 * 60)
