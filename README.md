@@ -4,7 +4,7 @@
 
 This is a small collection of Python scripts designed for livestreaming a birdbox from a Raspberry Pi to YouTube!
 
-### **[Check out the channel on YouTube!](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)** (there are no birds yet 😢)
+### **[Check out the channel on YouTube!](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)** (unfortunately no birds showed up 😢)
 
 [<img src="/my-birdbox.png" alt="" width="500" />](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)
 
