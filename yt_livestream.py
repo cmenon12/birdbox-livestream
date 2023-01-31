@@ -251,8 +251,40 @@ class YouTube:
                 LOGGER.exception("PushError raised when using Pushbullet.")
                 traceback.print_exc()
 
+    def list_all_playlists(self) -> list[yt_types.YouTubePlaylist]:
+        """Fetch all the playlists.
+
+        :return: the playlists
+        :rtype: list[yt_types.YouTubePlaylist]
+        """
+
+        LOGGER.debug("Fetching all the playlists...")
+        next_page_token = ""
+        all_playlists = []
+        while next_page_token is not None:
+            response: yt_types.YouTubePlaylistList = self.execute_request(
+                self.get_service().playlists().list(
+                    part="id,snippet",
+                    mine=True,
+                    maxResults=50,
+                    pageToken=next_page_token))
+            LOGGER.debug("Response is: \n%s.",
+                         json.dumps(response, indent=4))
+            all_playlists.extend(response["items"])
+            next_page_token = response.get("nextPageToken")
+        LOGGER.debug("Playlists is: \n%s.",
+                     json.dumps(all_playlists, indent=4))
+
+        return all_playlists
+
     def add_to_playlist(self, video_id: str, playlist_id: str) -> None:
-        """Add the video to the playlist."""
+        """Add the video to the playlist.
+
+        :param video_id: the ID of the video to add
+        :type video_id: str
+        :param playlist_id: the ID of the playlist to add to
+        :type playlist_id: str
+        """
 
         LOGGER.info("Adding the video to the playlist...")
         LOGGER.info(locals())
@@ -769,26 +801,7 @@ class YouTubeLivestream(YouTube):
         if self.week_playlist is None or self.week_playlist["snippet"]["title"] != playlist_title:
 
             # Get all the playlists
-            LOGGER.debug("Fetching all the playlists...")
-            next_page_token = ""
-            all_playlists = []
-            while next_page_token is not None:
-                response: yt_types.YouTubePlaylistList = self.execute_request(
-                    self.get_service().playlists().list(
-                        part="id,snippet",
-                        mine=True,
-                        maxResults=50,
-                        pageToken=next_page_token))
-                LOGGER.debug(
-                    "Response is: \n%s.", json.dumps(
-                        response, indent=4))
-                all_playlists.extend(response["items"])
-                next_page_token = response.get("nextPageToken")
-            LOGGER.debug(
-                "Playlists is: \n%s.",
-                json.dumps(
-                    all_playlists,
-                    indent=4))
+            all_playlists = self.list_all_playlists()
 
             # Try & find this week's playlist
             for item in all_playlists:
