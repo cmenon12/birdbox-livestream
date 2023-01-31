@@ -251,6 +251,30 @@ class YouTube:
                 LOGGER.exception("PushError raised when using Pushbullet.")
                 traceback.print_exc()
 
+    def add_to_playlist(self, video_id: str, playlist_id: str) -> None:
+        """Add the video to the playlist."""
+
+        LOGGER.info("Adding the video to the playlist...")
+        LOGGER.info(locals())
+
+        # Add the video to the playlist
+        playlist_item: yt_types.YouTubePlaylistItem = self.execute_request(
+            self.get_service().playlistItems().insert(
+                part="id,snippet",
+                body={
+                    "snippet": {
+                        "playlistId": playlist_id,
+                        "resourceId": {
+                            "videoId": video_id,
+                            "kind": "youtube#video"}}}))
+        LOGGER.debug(
+            "Playlist Item is: \n%s.",
+            json.dumps(
+                playlist_item,
+                indent=4))
+
+        LOGGER.info("Added the video to the playlist successfully!")
+
 
 class BroadcastTypes(Enum):
     """The possible types for a broadcast, including an 'all' type."""
@@ -787,20 +811,7 @@ class YouTubeLivestream(YouTube):
                         self.week_playlist, indent=4))
 
         # Add the video to the playlist
-        playlist_item: yt_types.YouTubePlaylistItem = self.execute_request(
-            self.get_service().playlistItems().insert(
-                part="id,snippet",
-                body={
-                    "snippet": {
-                        "playlistId": self.week_playlist["id"],
-                        "resourceId": {
-                            "videoId": video_id,
-                            "kind": "youtube#video"}}}))
-        LOGGER.debug(
-            "Playlist Item is: \n%s.",
-            json.dumps(
-                playlist_item,
-                indent=4))
+        self.add_to_playlist(video_id, self.week_playlist["id"])
 
         LOGGER.info("Added the video to the week's playlist successfully!")
 

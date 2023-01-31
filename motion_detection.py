@@ -309,6 +309,7 @@ def main():
                         yt.get_service(), video_id, motion_desc)
                     if "No motion" not in motion_desc:
                         send_motion_email(email_config, video_id, motion_desc)
+                        yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
                     else:
                         try:
                             send2trash.send2trash(filename)
