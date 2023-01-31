@@ -739,7 +739,7 @@ class YouTubeLivestream(YouTube):
         playlist_title = (
                 start_time -
                 timedelta(
-                    days=start_time.weekday())).strftime("W%W: w/c %d %b")
+                    days=start_time.weekday())).strftime("W%W: w/c %d %b %Y")
 
         # Only get the playlist for this week if we don't already have it
         if self.week_playlist is None or self.week_playlist["snippet"]["title"] != playlist_title:
