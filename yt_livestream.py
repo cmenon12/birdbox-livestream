@@ -882,6 +882,56 @@ class YouTubeLivestream(YouTube):
         LOGGER.debug("Broadcast status of %s is: %s.", video_id, broadcasts["items"][0]["status"])
         return broadcasts["items"][0]["status"]
 
+    def cleanup_unused_broadcasts(self):
+        """Cleanup broadcasts that haven't started yet."""
+
+        LOGGER.info("Cleaning up unused broadcasts...")
+
+        # Get all upcoming broadcasts
+        LOGGER.debug("Fetching all the upcoming broadcasts...")
+        next_page_token = ""
+        all_broadcasts = []
+        while next_page_token is not None:
+            response: yt_types.YouTubeLiveBroadcastList = self.execute_request(
+                self.get_service().liveBroadcasts().list(
+                    part="id,snippet",
+                    broadcastStatus="upcoming",
+                    maxResults=50,
+                    pageToken=next_page_token))
+            LOGGER.debug(
+                "Response is: \n%s.", json.dumps(
+                    response, indent=4))
+            all_broadcasts.extend(response["items"])
+            next_page_token = response.get("nextPageToken")
+
+        # Stop if there are no upcoming broadcasts
+        if len(all_broadcasts) == 0:
+            LOGGER.info("No unused broadcasts found!")
+            return
+
+        # Get all the playlists
+        all_playlists = self.list_all_playlists()
+
+        for broadcast in all_broadcasts:
+            start_time = datetime.strptime(broadcast["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
+
+            # Calculate the playlist title
+            playlist_title = (start_time - timedelta(
+                days=start_time.weekday())).strftime("W%W: w/c %d %b %Y")
+
+            # Delete it from the playlist if it exists
+            for item in all_playlists:
+                if item["snippet"]["title"] == playlist_title:
+                    LOGGER.debug("Deleting from playlist %s.", item)
+                    self.delete_from_playlist(self, broadcast["id"], item["id"])
+                    break
+
+            # Delete the broadcast
+            LOGGER.debug("Deleting broadcast %s.", broadcast)
+            self.execute_request(self.get_service().liveBroadcasts().delete(id=broadcast["id"]))
+
+        LOGGER.info("Unused broadcasts cleaned up successfully!")
+
 
 def send_error_email(config: configparser.SectionProxy, trace: str,
                      filename: str) -> None:
@@ -957,6 +1007,7 @@ def main():
 
     try:
         yt = YouTubeLivestream(yt_config)
+        yt.cleanup_unused_broadcasts()
 
         # Create the stream
         url = yt.get_stream_url()
