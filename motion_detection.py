@@ -24,6 +24,7 @@ from dvr_scan.timecode import FrameTimecode
 from googleapiclient.discovery import build
 from pytz import timezone
 
+import google_services
 import yt_livestream
 import yt_types
 
@@ -136,7 +137,7 @@ def get_motion_timestamps(filename: str) -> str:
         threshold=MOTION_DETECTION_PARAMS["threshold"]
     )
     result: List[Tuple[FrameTimecode, FrameTimecode,
-                       FrameTimecode]] = scan.scan_motion()
+    FrameTimecode]] = scan.scan_motion()
     if len(result) == 0:
         output = "No motion was detected in this video 😢."
     else:
@@ -268,20 +269,27 @@ def main():
     try:
 
         # Get initial access to the YouTube API
-        yt = yt_livestream.YouTube(yt_config)
+        yt = google_services.YouTube(yt_config)
         yt.get_service()
 
-        # Try and load the list of completed IDs
-
+        all_done = False
         while True:
 
             # Find out which videos need processing
             new_ids = []
             new_complete_broadcasts = get_complete_broadcasts(yt.get_service())
             for video in new_complete_broadcasts:
-                if "motion" not in video["snippet"]["description"].lower():
+                if "motion" not in video["snippet"]["description"].lower() and video["status"][
+                    "privacyStatus"] != "private":
                     new_ids.append(video["id"])
             LOGGER.debug("new_ids is: %s.", new_ids)
+
+            # Tell the user if they're all done
+            if new_ids == [] and all_done is False:
+                print("No new videos to process!")
+                all_done = True
+            elif new_ids != [] and all_done is True:
+                all_done = False
 
             # Process them
             for video_id in new_ids:
