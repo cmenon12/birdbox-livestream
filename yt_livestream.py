@@ -604,6 +604,8 @@ class YouTubeLivestream(youtube.YouTube):
                     response, indent=4))
             all_broadcasts.extend(response["items"])
             next_page_token = response.get("nextPageToken")
+        LOGGER.debug("Broadcasts is: \n%s.",
+                     json.dumps(all_broadcasts, indent=4))
 
         # Stop if there are no upcoming broadcasts
         if len(all_broadcasts) == 0:
@@ -614,6 +616,9 @@ class YouTubeLivestream(youtube.YouTube):
         all_playlists = self.list_all_playlists()
 
         for broadcast in all_broadcasts:
+            if not broadcast["snippet"].get("scheduledStartTime"):
+                LOGGER.debug("Broadcast with ID %s has no scheduled start time, skipping.", broadcast["id"])
+                continue
             start_time = datetime.strptime(broadcast["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
 
             # Calculate the playlist title
