@@ -103,7 +103,7 @@ class YouTubeLivestream(google_services.YouTube):
                     "contentDetails": {
                         "isReusable": True},
                     "snippet": {
-                        "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).isoformat()}"}}))
+                        "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H:%M:%S %Z')}"}}))
         LOGGER.debug("Stream is: \n%s.", json.dumps(stream, indent=4))
 
         # Save and return it
@@ -149,13 +149,13 @@ class YouTubeLivestream(google_services.YouTube):
         if start_time in self.get_broadcasts().keys():
             LOGGER.debug(
                 "Returning existing broadcast at %s.",
-                start_time.isoformat())
+                start_time.strftime("%Y-%m-%d %H:%M:%S %Z"))
             LOGGER.info("Broadcast scheduled successfully!\n")
             return self.get_broadcasts()[start_time]
 
         # Round the end time to the nearest 6 hours
         end_time = start_time.astimezone(TIMEZONE) + timedelta(minutes=360)
-        LOGGER.debug("End time with no rounding is %s.", end_time.isoformat())
+        LOGGER.debug("End time with no rounding is %s.", end_time.strftime("%Y-%m-%d %H:%M:%S %Z"))
 
         # If it's going to be tomorrow at midnight
         if round(end_time.hour / 6) * 6 >= 24:
@@ -169,7 +169,7 @@ class YouTubeLivestream(google_services.YouTube):
                                         hour=round(end_time.hour / 6) * 6)
         LOGGER.debug(
             "End time to the nearest hour is %s.",
-            end_time.isoformat())
+            end_time.strftime("%Y-%m-%d %H:%M:%S %Z"))
 
         # Create a description
         description = f"A livestream of the birdbox starting on {start_time.strftime('%a %d %b at %H.%M')}" \
@@ -207,7 +207,7 @@ class YouTubeLivestream(google_services.YouTube):
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
         print(
-            f"Scheduled a broadcast at {start_time.isoformat()} till {end_time.isoformat()}")
+            f"Scheduled a broadcast at {start_time.strftime('%Y-%m-%d %H:%M:%S %Z')} till {end_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
         LOGGER.info("Broadcast scheduled successfully!\n")
         return broadcast
 
@@ -229,7 +229,7 @@ class YouTubeLivestream(google_services.YouTube):
         # Check that this broadcast exists.
         if start_time not in self.scheduled_broadcasts:
             raise ValueError(
-                f"The broadcast at {start_time.isoformat()} is not scheduled!")
+                f"The broadcast at {start_time.strftime('%Y-%m-%d %H:%M:%S %Z')} is not scheduled!")
 
         # Bind the broadcast to the stream
         LOGGER.debug("Binding the broadcast to the stream...")
@@ -301,7 +301,7 @@ class YouTubeLivestream(google_services.YouTube):
             self.update_video_metadata(self.live_broadcasts[start_time]["id"])
 
         # Return it
-        print(f"Started a broadcast at {start_time.isoformat()}")
+        print(f"Started a broadcast at {start_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
         LOGGER.info("Broadcast started successfully!\n")
         return broadcast
 
@@ -323,7 +323,7 @@ class YouTubeLivestream(google_services.YouTube):
         # Check that this broadcast exists
         if start_time not in self.live_broadcasts:
             raise ValueError(
-                f"The broadcast at {start_time.isoformat()} is not live!")
+                f"The broadcast at {start_time.strftime('%Y-%m-%d %H:%M:%S %Z')} is not live!")
 
         # Change its status to complete
         LOGGER.debug("Transitioning the broadcastStatus to complete...")
@@ -350,7 +350,7 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Save and return the updated resource
         self.live_broadcasts.pop(start_time)
-        print(f"Ended a broadcast that started at {start_time.isoformat()}")
+        print(f"Ended a broadcast that started at {start_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
         LOGGER.info("Broadcast ended successfully!\n")
         return self.finished_broadcasts[start_time]
 
