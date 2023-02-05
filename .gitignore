@@ -129,16 +129,18 @@ dmypy.json
 .pyre/
 
 # Project-specific
+.idea/
+cleanup/
+logs/
+music/
+videos/
 client_secret.json
-token.pickle
-new-token.pickle
-/logs
 config.ini
-/.idea
+save_data.json
+token.pickle
+token-new.pickle
 *.3gp
 *.mp4
 *.part
 *.avi
 *.ytdl
-save_data.json
-/music

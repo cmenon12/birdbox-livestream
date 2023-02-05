@@ -9,7 +9,7 @@ __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
 # The token filenames to use
-NEW_TOKEN_PICKLE_FILE = "new-token.pickle"
+NEW_TOKEN_PICKLE_FILE = "token-new.pickle"
 OLD_TOKEN_PICKLE_FILE = youtube.TOKEN_PICKLE_FILE
 
 # The name of the config file
