@@ -26,7 +26,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 
 import googleapiclient
 from func_timeout import func_set_timeout, FunctionTimedOut
@@ -251,7 +251,7 @@ class YouTube:
                 LOGGER.exception("PushError raised when using Pushbullet.")
                 traceback.print_exc()
 
-    def list_all_playlists(self) -> list[yt_types.YouTubePlaylist]:
+    def list_all_playlists(self) -> List[yt_types.YouTubePlaylist]:
         """Fetch all the playlists.
 
         :return: the playlists
@@ -307,6 +307,43 @@ class YouTube:
 
         LOGGER.info("Added the video to the playlist successfully!")
 
+    def delete_from_playlist(self, video_id: str, playlist_id: str) -> None:
+        """Delete all occurrences of the video from the playlist.
+
+        :param video_id: the ID of the video to delete
+        :type video_id: str
+        :param playlist_id: the ID of the playlist to delete from
+        :type playlist_id: str
+        """
+
+        LOGGER.info("Deleting the video from the playlist...")
+        LOGGER.info(locals())
+
+        # List all the playlist items
+        next_page_token = ""
+        all_playlist_items = []
+        while next_page_token is not None:
+            response: yt_types.YouTubePlaylistItemList = self.execute_request(
+                self.get_service().playlistItems().list(
+                    part="id,snippet",
+                    playlistId=playlist_id,
+                    maxResults=50,
+                    pageToken=next_page_token))
+            LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
+            all_playlist_items.extend(response["items"])
+            next_page_token = response.get("nextPageToken")
+
+        # Get a list of item IDs to delete
+        item_ids = [item["id"] for item in all_playlist_items if item["snippet"]["resourceId"]["videoId"] == video_id]
+        LOGGER.debug("Item IDs is: \n%s.", json.dumps(item_ids, indent=4))
+
+        # Delete the items from the playlist
+        for item_id in item_ids:
+            self.execute_request(self.get_service().playlistItems().delete(id=item_id))
+            LOGGER.debug("Deleted item with ID %s.", item_id)
+
+        LOGGER.info("Deleted the video from the playlist successfully!")
+
 
 class BroadcastTypes(Enum):
     """The possible types for a broadcast, including an 'all' type."""
@@ -331,11 +368,11 @@ class YouTubeLivestream(YouTube):
         self.live_stream: Optional[yt_types.YouTubeLiveStream] = None
         self.week_playlist: Optional[yt_types.YouTubePlaylist] = None
         self.scheduled_broadcasts: Dict[datetime,
-                                        yt_types.YouTubeLiveBroadcast] = {}
+        yt_types.YouTubeLiveBroadcast] = {}
         self.finished_broadcasts: Dict[datetime,
-                                       yt_types.YouTubeLiveBroadcast] = {}
+        yt_types.YouTubeLiveBroadcast] = {}
         self.live_broadcasts: Dict[datetime,
-                                   yt_types.YouTubeLiveBroadcast] = {}
+        yt_types.YouTubeLiveBroadcast] = {}
 
     def get_stream(self) -> yt_types.YouTubeLiveStream:
         """Gets the livestream, creating it if needed.
@@ -618,7 +655,7 @@ class YouTubeLivestream(YouTube):
 
     def get_broadcasts(self,
                        category: BroadcastTypes = None) -> Dict[datetime,
-                                                                yt_types.YouTubeLiveBroadcast]:
+    yt_types.YouTubeLiveBroadcast]:
         """Returns a dict with the broadcasts
 
         :param category: the category of broadcasts if not all

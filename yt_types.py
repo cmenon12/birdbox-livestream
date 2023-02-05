@@ -201,6 +201,15 @@ class YouTubePlaylistItem(TypedDict, total=False):
     status: Status
 
 
+class YouTubePlaylistItemList(TypedDict, total=False):
+    kind: Literal['youtube#playlistItemListResponse']
+    etag: str
+    nextPageToken: str
+    prevPageToken: str
+    pageInfo: PageInfo
+    items: List[YouTubePlaylistItem]
+
+
 class Localization(TypedDict, total=False):
     title: str
     description: str
