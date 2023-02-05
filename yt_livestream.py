@@ -29,7 +29,7 @@ from typing import Optional, Dict
 import googleapiclient
 from pytz import timezone
 
-import youtube
+import google_services
 import yt_types
 
 __author__ = "Christopher Menon"
@@ -55,7 +55,7 @@ class BroadcastTypes(Enum):
     ALL = auto()
 
 
-class YouTubeLivestream(youtube.YouTube):
+class YouTubeLivestream(google_services.YouTube):
     """Represents a single continuous YouTube livestream.
 
     :param config: the config to use

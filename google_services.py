@@ -8,7 +8,7 @@ import traceback
 from datetime import datetime
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 
 import googleapiclient
 from func_timeout import func_set_timeout, FunctionTimedOut
@@ -31,12 +31,6 @@ AUTHORISATION_TIMEOUT = 600
 # File with the OAuth client secret
 CLIENT_SECRET_FILE = "client_secret.json"
 
-# API-specific credentials
-SCOPES = ["https://www.googleapis.com/auth/youtube"]
-
-# File with the user's access and refresh tokens
-TOKEN_PICKLE_FILE = "token.pickle"
-
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
 
@@ -49,24 +43,35 @@ class AuthorisationTypes(Enum):
     BROWSER = auto()
 
 
-class YouTube:
-    """Represents the YouTube API.
+class GoogleService:
+    """Represents a Google service API.
 
     :param config: the config to use
     :type config: configparser.SectionProxy
+    :param service_name: the name of the service
+    :type service_name: str
+    :param service_version: the version of the service
+    :type service_version: str
+    :param scopes: the scopes to use
+    :type scopes: List[str]
+    :param token_file: the file to store the token in
+    :type token_file: Optional[str]
     """
 
-    def __init__(self, config: configparser.SectionProxy):
+    def __init__(self, config: configparser.SectionProxy, service_name: str,
+                 service_version: str, scopes: List[str], token_file: Optional[str] = None):
 
         self.config = config
+        self.service_name = service_name
+        self.service_version = service_version
+        self.scopes = scopes
+        self.token_file = token_file if token_file else f"{service_name}_{service_version}.pickle"
 
-    def get_service(
-            self,
-            auth_type: AuthorisationTypes = AuthorisationTypes.PUSHBULLET,
-            token_file=TOKEN_PICKLE_FILE) -> googleapiclient.discovery.Resource:
-        """Authenticates the YouTube API, returning the service.
+    def get_service(self,
+                    auth_type: AuthorisationTypes = AuthorisationTypes.PUSHBULLET) -> googleapiclient.discovery.Resource:
+        """Authenticates the API, returning the service.
 
-        :return: the YouTube API service (a Resource)
+        :return: the API service (a Resource)
         :rtype: googleapiclient.discovery.Resource
         """
 
@@ -79,14 +84,14 @@ class YouTube:
             # Open the browser for the user to authorise it
             if auth_type is AuthorisationTypes.BROWSER:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRET_FILE, SCOPES)
+                    CLIENT_SECRET_FILE, self.scopes)
                 print("Your browser should open automatically.")
                 return flow.run_local_server(port=0)
 
             # Tell the user to authorise it themselves
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRET_FILE, SCOPES,
+                    CLIENT_SECRET_FILE, self.scopes,
                     redirect_uri="urn:ietf:wg:oauth:2.0:oob")
                 auth_url, _ = flow.authorization_url(prompt="consent")
                 print(
@@ -95,16 +100,16 @@ class YouTube:
                         self.config["pushbullet_access_token"]).lower() != "false":
                     print("Requesting via Pushbullet...")
                     code = self.pushbullet_request_response(
-                        "YT API Authorisation", auth_url)
+                        "Google API Authorisation", auth_url)
                 else:
                     code = input("Enter the authorisation code: ")
                 flow.fetch_token(code=code)
                 return flow.credentials
 
         # Attempt to access pre-existing credentials
-        if os.path.exists(token_file):
-            with open(token_file, "rb") as token:
-                LOGGER.debug("Loading credentials from %s.", token_file)
+        if os.path.exists(self.token_file):
+            with open(self.token_file, "rb") as token:
+                LOGGER.debug("Loading credentials from %s.", self.token_file)
                 credentials = pickle.load(token)
 
             # Try to refresh the credentials
@@ -112,12 +117,12 @@ class YouTube:
             try:
                 credentials.refresh(Request())
             except RefreshError:
-                os.remove(token_file)
+                os.remove(self.token_file)
                 try:
                     credentials = authorise()
                 except FunctionTimedOut as error:
                     raise FunctionTimedOut(
-                        f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google APIs.") from error
+                        f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google API.") from error
 
         # If they don't exist then get some new ones
         else:
@@ -125,18 +130,18 @@ class YouTube:
                 credentials = authorise()
             except FunctionTimedOut as error:
                 raise FunctionTimedOut(
-                    f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google APIs.") from error
+                    f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google API.") from error
 
         # Save the credentials for the next run
-        with open(token_file, "wb") as token:
+        with open(self.token_file, "wb") as token:
             pickle.dump(credentials, token)
         LOGGER.debug("Credentials saved to %s successfully.",
-                     token_file)
+                     self.token_file)
 
         # Create and return the authenticated service
-        service = build("youtube", "v3", credentials=credentials)
+        service = build(self.service_name, self.service_version, credentials=credentials)
 
-        assert os.path.exists(token_file)
+        assert os.path.exists(self.token_file)
 
         LOGGER.info("Service authorised successfully!\n")
         return service
@@ -226,6 +231,18 @@ class YouTube:
             except PushError:
                 LOGGER.exception("PushError raised when using Pushbullet.")
                 traceback.print_exc()
+
+
+class YouTube(GoogleService):
+    """Represents the YouTube API.
+
+    :param config: the config to use
+    :type config: configparser.SectionProxy
+    """
+
+    def __init__(self, config: configparser.SectionProxy):
+
+        super().__init__(config, "youtube", "v3", ["https://www.googleapis.com/auth/youtube"])
 
     def list_all_playlists(self) -> List[yt_types.YouTubePlaylist]:
         """Fetch all the playlists.
