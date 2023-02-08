@@ -13,14 +13,13 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import Tuple, List
+from typing import List
 
 import dvr_scan
 import googleapiclient
 import humanize
 import send2trash
 import yt_dlp
-from dvr_scan.timecode import FrameTimecode
 from googleapiclient.discovery import build
 from pytz import timezone
 
@@ -136,8 +135,7 @@ def get_motion_timestamps(filename: str) -> str:
         roi=MOTION_DETECTION_PARAMS["roi"],
         threshold=MOTION_DETECTION_PARAMS["threshold"]
     )
-    result: List[Tuple[FrameTimecode, FrameTimecode,
-    FrameTimecode]] = scan.scan_motion()
+    result = scan.scan_motion()
     if len(result) == 0:
         output = "No motion was detected in this video 😢."
     else:

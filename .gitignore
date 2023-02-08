@@ -137,8 +137,7 @@ videos/
 client_secret.json
 config.ini
 save_data.json
-token.pickle
-token-new.pickle
+*.pickle
 *.3gp
 *.mp4
 *.part
