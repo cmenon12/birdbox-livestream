@@ -141,7 +141,8 @@ def get_motion_timestamps(filename: str) -> str:
     else:
         output = "\n\nMotion was detected at the following points:\n"
     for item in result:
-        output += f" • {item[0].get_timecode(0)} for {humanize.naturaldelta(item[2].get_seconds())}.\n"
+        duration = int(item[1].get_seconds() - item[0].get_seconds())
+        output += f" • {item[0].get_timecode(0)} for {duration} second{'s' if duration != 1 else ''}.\n"
     output += f"\n\nMOTION_DETECTION_PARAMS={MOTION_DETECTION_PARAMS}"
     LOGGER.debug("Output is: \n%s.", output)
 
@@ -261,7 +262,7 @@ def main():
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
-    yt_config = parser["YouTube"]
+    yt_config = parser["YouTubeLivestream"]
     email_config = parser["email"]
 
     try:

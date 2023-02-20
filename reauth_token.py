@@ -29,7 +29,7 @@ def main():
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
-    yt_config = parser["YouTube"]
+    yt_config = parser["YouTubeLivestream"]
 
     # Reauthorise to a new file
     if os.path.exists(NEW_TOKEN_PICKLE_FILE):
