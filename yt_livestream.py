@@ -629,7 +629,7 @@ class YouTubeLivestream(google_services.YouTube):
             for item in all_playlists:
                 if item["snippet"]["title"] == playlist_title:
                     LOGGER.debug("Deleting from playlist %s.", item)
-                    self.delete_from_playlist(self, broadcast["id"], item["id"])
+                    self.delete_from_playlist(broadcast["id"], item["id"])
                     break
 
             # Delete the broadcast
