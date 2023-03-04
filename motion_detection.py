@@ -278,8 +278,8 @@ def main():
             new_ids = []
             new_complete_broadcasts = get_complete_broadcasts(yt.get_service())
             for video in new_complete_broadcasts:
-                if "motion" not in video["snippet"]["description"].lower() and video["status"][
-                    "privacyStatus"] != "private":
+                if "motion" not in video["snippet"]["description"].lower() and \
+                        video["status"]["privacyStatus"] != "private":
                     new_ids.append(video["id"])
             LOGGER.debug("new_ids is: %s.", new_ids)
 
@@ -302,6 +302,12 @@ def main():
                         "There was an error with downloading the video!")
                     print("There was an error with downloading the video!")
                     print(f"{traceback.format_exc()}\n")
+
+                    # Record no motion if the recording is unavailable
+                    if error.msg == "This live stream recording is not available.":
+                        update_motion_status(yt.get_service(), video_id,
+                                             "No motion was detected in this video as the recording is not available😢.")
+
                     continue
                 else:
                     LOGGER.debug(
