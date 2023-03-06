@@ -42,7 +42,8 @@ MOTION_DETECTION_PARAMS = {
     "min_event_len": 30 * 3,
     "time_pre_event": "0s",
     "time_post_event": "0s",
-    "roi": [64, 54, 82, 54],  # Rectangle of form [x y w h] representing bounding box of subset of each frame to look at
+    "roi": [33, 37, 145, 84],
+    # Rectangle of form [x y w h] representing bounding box of subset of each frame to look at
     "threshold": 0.5  # the threshold for motion 0 < t < 1, default 0.15
 }
 
