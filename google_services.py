@@ -92,7 +92,7 @@ class GoogleService:
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     CLIENT_SECRET_FILE, self.scopes,
-                    redirect_uri="urn:ietf:wg:oauth:2.0:oob")
+                    redirect_uri="http://localhost:1/")
                 auth_url, _ = flow.authorization_url(prompt="consent")
                 print(
                     f"Please visit this URL to authorise this application: {auth_url}")
