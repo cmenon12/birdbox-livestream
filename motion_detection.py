@@ -305,9 +305,10 @@ def main():
                     print(f"{traceback.format_exc()}\n")
 
                     # Record no motion if the recording is unavailable
-                    if error.msg == "This live stream recording is not available.":
+                    if "This live stream recording is not available." in error.msg:
                         update_motion_status(yt.get_service(), video_id,
-                                             "No motion was detected in this video as the recording is not available😢.")
+                                             "No motion was detected in this video as the recording is not available 😢.")
+                        print("Marked the video as having no motion.")
 
                     continue
                 else:
