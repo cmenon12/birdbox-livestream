@@ -266,6 +266,10 @@ def main():
     yt_config = parser["YouTubeLivestream"]
     email_config = parser["email"]
 
+    # Check if the user wants to download only
+    download_only = [True if input("Download only? (y/n) ").lower() == "y" else False][0]
+    LOGGER.info(f"The user does {'not' if not download_only else ''} want to download only.")
+
     try:
 
         # Get initial access to the YouTube API
@@ -318,22 +322,27 @@ def main():
                         humanize.naturalsize(
                             os.path.getsize(filename)))
 
-                    # Run motion detection
-                    motion_desc = get_motion_timestamps(filename)
-                    update_motion_status(
-                        yt.get_service(), video_id, motion_desc)
-                    if "No motion" not in motion_desc:
-                        send_motion_email(email_config, video_id, motion_desc)
-                        yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
+                    if not download_only:
+
+                        # Run motion detection
+                        motion_desc = get_motion_timestamps(filename)
+                        update_motion_status(
+                            yt.get_service(), video_id, motion_desc)
+                        if "No motion" not in motion_desc:
+                            send_motion_email(email_config, video_id, motion_desc)
+                            yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
+                        else:
+                            try:
+                                send2trash.send2trash(filename)
+                            except send2trash.TrashPermissionError as error:
+                                LOGGER.exception("Could not delete %s!", filename)
+                                print(f"Could not delete {filename}!")
+                                print(str(error))
+                                print(traceback.format_exc())
+                        print(f"Processed {video_id} successfully!\n")
+
                     else:
-                        try:
-                            send2trash.send2trash(filename)
-                        except send2trash.TrashPermissionError as error:
-                            LOGGER.exception("Could not delete %s!", filename)
-                            print(f"Could not delete {filename}!")
-                            print(str(error))
-                            print(traceback.format_exc())
-                    print(f"Processed {video_id} successfully!\n")
+                        print(f"Downloaded {video_id} successfully!\n")
 
             # Wait before repeating
             time.sleep(15 * 60)
