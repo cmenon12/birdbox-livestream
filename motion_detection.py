@@ -286,6 +286,7 @@ def main():
                 if "motion" not in video["snippet"]["description"].lower() and \
                         video["status"]["privacyStatus"] != "private":
                     new_ids.append(video["id"])
+            new_ids.reverse()
             LOGGER.debug("new_ids is: %s.", new_ids)
 
             # Tell the user if they're all done
