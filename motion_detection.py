@@ -139,11 +139,15 @@ def get_motion_timestamps(filename: str) -> str:
     result = scan.scan_motion()
     if len(result) == 0:
         output = "No motion was detected in this video 😢."
+    elif len(result) == 1:
+        output = "\n\nMotion was detected at "
+        duration = int(result[0][1].get_seconds() - result[0][0].get_seconds())
+        output += f"{result[0][0].get_timecode(0)} for {duration} second{'s' if duration != 1 else ''}.\n"
     else:
         output = "\n\nMotion was detected at the following points:\n"
-    for item in result:
-        duration = int(item[1].get_seconds() - item[0].get_seconds())
-        output += f" • {item[0].get_timecode(0)} for {duration} second{'s' if duration != 1 else ''}.\n"
+        for item in result:
+            duration = int(item[1].get_seconds() - item[0].get_seconds())
+            output += f" • {item[0].get_timecode(0)} for {duration} second{'s' if duration != 1 else ''}.\n"
     output += f"\n\nMOTION_DETECTION_PARAMS={MOTION_DETECTION_PARAMS}"
     LOGGER.debug("Output is: \n%s.", output)
 
