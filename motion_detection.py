@@ -1,3 +1,4 @@
+import argparse
 import configparser
 import email
 import email.utils
@@ -270,10 +271,6 @@ def main():
     yt_config = parser["YouTubeLivestream"]
     email_config = parser["email"]
 
-    # Check if the user wants to download only
-    download_only = [True if input("Download only? (y/n) ").lower() == "y" else False][0]
-    LOGGER.info(f"The user does {'not' if not download_only else ''} want to download only.")
-
     try:
 
         # Get initial access to the YouTube API
@@ -302,7 +299,7 @@ def main():
 
             # Process them
             for video_id in new_ids:
-                print(f"Processing {video_id}...")
+                print(f"{'Downloading' if args.download_only else 'Processing'} {video_id}...")
 
                 # Try to download the video, but just skip for now if it fails
                 try:
@@ -327,7 +324,7 @@ def main():
                         humanize.naturalsize(
                             os.path.getsize(filename)))
 
-                    if not download_only:
+                    if not args.download_only:
 
                         # Run motion detection
                         motion_desc = get_motion_timestamps(filename)
@@ -344,10 +341,8 @@ def main():
                                 print(f"Could not delete {filename}!")
                                 print(str(error))
                                 print(traceback.format_exc())
-                        print(f"Processed {video_id} successfully!\n")
 
-                    else:
-                        print(f"Downloaded {video_id} successfully!\n")
+                    print(f"{'Downloaded' if args.download_only else 'Processed'} {video_id} successfully!\n")
 
             # Wait before repeating
             time.sleep(15 * 60)
@@ -374,6 +369,12 @@ if __name__ == "__main__":
         level=logging.DEBUG,
         handlers=[log_handler])
     LOGGER = logging.getLogger(__name__)
+
+    # Parse the args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--download-only", action="store_true")
+    args = parser.parse_args()
+    LOGGER.info("Args are: %s.", args)
 
     # Run it
     main()
