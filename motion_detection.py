@@ -270,6 +270,12 @@ def main():
     parser.read(CONFIG_FILENAME)
     yt_config = parser["YouTubeLivestream"]
     email_config = parser["email"]
+    motion_config = parser["motion_detection"]
+
+    # Save the directories
+    old_cwd = os.getcwd()
+    download_folder = Path(motion_config["download_folder"]) if \
+        motion_config["download_folder"] != "" else Path(os.getcwd())
 
     try:
 
@@ -303,12 +309,20 @@ def main():
 
                 # Try to download the video, but just skip for now if it fails
                 try:
+                    os.chdir(download_folder)
+                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
                     filename = download_video(video_id)
+                    os.chdir(old_cwd)
+                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
+                    filename = str(download_folder / filename)
+                    LOGGER.debug("filename is: %s.", filename)
                 except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
                     LOGGER.exception(
                         "There was an error with downloading the video!")
                     print("There was an error with downloading the video!")
                     print(f"{traceback.format_exc()}\n")
+                    os.chdir(old_cwd)
+                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
 
                     # Record no motion if the recording is unavailable
                     if "This live stream recording is not available." in error.msg:
@@ -350,6 +364,8 @@ def main():
     except Exception as error:
         LOGGER.error("\n\n")
         LOGGER.exception("There was an exception!!")
+        os.chdir(old_cwd)
+        LOGGER.debug("Changed working directory to %s.", os.getcwd())
         yt_livestream.send_error_email(
             email_config, traceback.format_exc(), log_filename)
         raise Exception from error
