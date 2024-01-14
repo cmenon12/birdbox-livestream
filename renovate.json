@@ -42,6 +42,7 @@
   },
   "labels": ["dependencies"],
   "platformCommit": true,
+  "schedule": "on friday at 4pm",
   "packageRules": [
     {
       "matchPackageNames": ["google-api-python-client"],
