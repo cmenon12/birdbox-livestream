@@ -1,0 +1,45 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "assignees": ["cmenon12"],
+  "commitMessageExtra": "{{#if isPinDigest}}from {{{currentDigestShort}}} to {{{newDigestShort}}}{{else}}{{#if isMajor}}from {{currentVersion}} to {{newVersion}} (major){{else}}{{#if isSingleVersion}}from {{currentVersion}} to {{newVersion}}{{else}}{{#if newValue}}from {{{currentValue}}} to {{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}",
+  "commitMessageTopic": "{{depName}}",
+  "osvVulnerabilityAlerts": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "prBodyColumns": [
+    "Package",
+    "Type",
+    "Change",
+    "Pending",
+    "Age",
+    "Adoption",
+    "Confidence"
+  ],
+  "prBodyNotes": [
+    "{{#if isMajor}}:rotating_light: Be careful, this is a major update.{{/if}}",
+    "{{#if (equals updateType 'minor')}}:warning: This is a minor update.{{/if}}"
+  ],
+  "prCreation": "immediate",
+  "prConcurrentLimit": 20,
+  "prHourlyLimit": 10,
+  "prTitleStrict": true,
+  "minimumReleaseAge": "5 days",
+  "rebaseWhen": "behind-base-branch",
+  "separateMinorPatch": true,
+  "patch": {
+    "groupName": "all patch updates",
+    "description": "Group all patch updates together"
+  },
+  "minor": {
+    "dependencyDashboardApproval": true,
+    "description": "Require dashboard approval to create minor PRs"
+  },
+  "major": {
+    "dependencyDashboardApproval": true,
+    "description": "Require dashboard approval to create major PRs"
+  },
+  "labels": ["dependencies"],
+  "platformCommit": true
+}
