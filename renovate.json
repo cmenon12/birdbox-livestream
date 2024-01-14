@@ -39,5 +39,5 @@
     "dependencyDashboardApproval": true,
     "description": "Require dashboard approval to create major PRs"
   },
-  "labels": ["deps"]
+  "labels": ["dependencies"]
 }
