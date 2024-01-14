@@ -1,14 +1,14 @@
 dvr-scan==1.5.1
 func-timeout==4.3.5
 google-api-python-client==2.33.0
-google-auth-httplib2==0.1.0
+google-auth-httplib2==0.1.1
 google-auth-oauthlib==0.4.6
 humanize==4.9.0
 opencv-python==4.8.1.78
 progress-bar==8
 pushbullet.py==0.12.0
 pytz==2021.3
-Send2Trash==1.8.0
+Send2Trash==1.8.2
 typing_extensions==4.9.0
 tzlocal==4.3.1
 yt-dlp @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz#sha256=f31a30e3a1e7fc712088569264d07fdee34c8639a4be4f7f0be02c7b71ddb3eb
