@@ -29,7 +29,7 @@
   "patch": {
     "groupName": "all patch updates",
     "automerge": true,
-    "ignoreTests": true
+    "ignoreTests": true,
     "description": "Group and automerge all patch updates together"
   },
   "minor": {
