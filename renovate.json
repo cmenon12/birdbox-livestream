@@ -1,10 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    ":ignoreModulesAndTests",
-    "replacements:all",
-    "workarounds:all",
-    "group:monorepos"
+    "config:recommended"
   ],
   "assignees": ["cmenon12"],
   "commitMessageExtra": "{{#if isPinDigest}}from {{{currentDigestShort}}} to {{{newDigestShort}}}{{else}}{{#if isMajor}}from {{curentVersion}} to {{newVersion}} (major){{else}}{{#if isSingleVersion}}from {{currentVersion}} to {{newVersion}}{{else}}{{#if newValue}}from {{{currentValue}}} to {{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}",
@@ -27,7 +24,6 @@
   "prConcurrentLimit": 20,
   "prHourlyLimit": 10,
   "prTitleStrict": true,
-  "dependencyDashboard": true,
   "minimumReleaseAge": "5 days",
   "rebaseWhen": "behind-base-branch",
   "separateMinorPatch": true,
