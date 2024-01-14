@@ -10,5 +10,5 @@ pushbullet.py==0.12.0
 pytz==2021.3
 Send2Trash==1.8.0
 typing_extensions==4.9.0
-tzlocal==4.1
+tzlocal==4.3.1
 yt-dlp @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz#sha256=f31a30e3a1e7fc712088569264d07fdee34c8639a4be4f7f0be02c7b71ddb3eb
