@@ -255,22 +255,11 @@ def send_motion_email(
 def main():
     """Runs the motion detection script indefinitely."""
 
-    # Check that the config file exists
-    try:
-        open(CONFIG_FILENAME)
-        LOGGER.info("Loaded config %s.", CONFIG_FILENAME)
-    except FileNotFoundError as error:
-        print("The config file doesn't exist!")
-        LOGGER.info("Could not find config %s, exiting.", CONFIG_FILENAME)
-        time.sleep(5)
-        raise FileNotFoundError("The config file doesn't exist!") from error
-
-    # Fetch info from the config
-    parser = configparser.ConfigParser()
-    parser.read(CONFIG_FILENAME)
-    yt_config = parser["YouTubeLivestream"]
-    email_config = parser["email"]
-    motion_config = parser["motion_detection"]
+    # Get the config
+    config = yt_livestream.load_config(CONFIG_FILENAME)
+    yt_config = config["YouTubeLivestream"]
+    email_config = config["email"]
+    motion_config = config["motion_detection"]
 
     # Save the directories
     old_cwd = os.getcwd()
@@ -362,8 +351,7 @@ def main():
             time.sleep(15 * 60)
 
     except Exception as error:
-        LOGGER.error("\n\n")
-        LOGGER.exception("There was an exception!!")
+        LOGGER.exception("\n\nThere was an exception!!")
         os.chdir(old_cwd)
         LOGGER.debug("Changed working directory to %s.", os.getcwd())
         yt_livestream.send_error_email(

@@ -692,22 +692,76 @@ def send_error_email(config: configparser.SectionProxy, trace: str,
     LOGGER.info("Error email sent successfully!\n")
 
 
-def main():
-    """Runs the livestream script indefinitely."""
+def process_broadcasts(now: datetime, yt: YouTubeLivestream, pause_time: int = 5):
+    """Schedule, start, and end the broadcasts."""
+
+    scheduled = yt.get_broadcasts(BroadcastTypes.SCHEDULED).copy()
+    live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
+
+    # Schedule broadcasts
+    if len(scheduled) < int(MAX_SCHEDULED_BROADCASTS):
+        last_start_time = max(scheduled.keys()) if len(scheduled) != 0 else max(live.keys())
+        last_broadcast = scheduled[last_start_time]
+        start_time = datetime.fromisoformat(
+            last_broadcast["snippet"]["scheduledEndTime"].replace(
+                "Z", "+00:00")).astimezone(TIMEZONE)
+        yt.schedule_broadcast(start_time)
+
+    time.sleep(pause_time)
+
+    # Start broadcasts
+    for start_time in scheduled.keys():
+        if start_time <= now:
+            yt.start_broadcast(start_time)
+
+            # Wait until it's actually live (or otherwise done)
+            status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
+            while status not in ("live", "complete", "revoked"):
+                status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
+                time.sleep(20)
+
+            # Update the start time
+            yt.update_video_start_time(scheduled[start_time]["id"])
+
+    time.sleep(pause_time)
+
+    # Finish broadcasts
+    for start_time in live.keys():
+        end_time = datetime.fromisoformat(
+            live[start_time]["snippet"]["scheduledEndTime"].replace(
+                "Z", "+00:00"))
+        if end_time <= now:
+            yt.end_broadcast(start_time)
+            yt.update_video_end_time(live[start_time]["id"])
+
+    time.sleep(pause_time)
+
+
+def load_config(filename: str = CONFIG_FILENAME) -> configparser.SectionProxy:
+    """Load the config file."""
 
     # Check that the config file exists
     try:
-        open(CONFIG_FILENAME)
-        LOGGER.info("Loaded config %s.", CONFIG_FILENAME)
+        open(filename)
+        LOGGER.info("Loaded config %s.", filename)
     except FileNotFoundError as error:
         print("The config file doesn't exist!")
-        LOGGER.info("Could not find config %s, exiting.", CONFIG_FILENAME)
+        LOGGER.info("Could not find config %s, exiting.", filename)
         time.sleep(5)
         raise FileNotFoundError("The config file doesn't exist!") from error
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
-    parser.read(CONFIG_FILENAME)
+    parser.read(filename)
+
+    return parser
+
+
+def main():
+    """Runs the livestream script indefinitely."""
+
+    # Get the config
+    parser = load_config()
     yt_config = parser["YouTubeLivestream"]
     email_config = parser["email"]
 
@@ -718,8 +772,6 @@ def main():
         # Create the stream
         url = yt.get_stream_url()
         print(f"\n{url}\n")
-        # print(f"\n{main_config['command']} {url}\n")
-        # subprocess.Popen(["./stream.sh", url])
 
         # Wait for the user to start streaming
         LOGGER.debug("Waiting for the stream status to be active...")
@@ -735,50 +787,8 @@ def main():
 
         while True:
 
-            scheduled = yt.get_broadcasts(BroadcastTypes.SCHEDULED).copy()
-            live = yt.get_broadcasts(BroadcastTypes.LIVE).copy()
             now = datetime.now(tz=TIMEZONE)
-
-            # Schedule broadcasts
-            if len(scheduled) < int(MAX_SCHEDULED_BROADCASTS):
-                if len(scheduled) != 0:
-                    last_start_time = max(scheduled.keys())
-                else:
-                    last_start_time = max(live.keys())
-                last_broadcast = scheduled[last_start_time]
-                start_time = datetime.fromisoformat(
-                    last_broadcast["snippet"]["scheduledEndTime"].replace(
-                        "Z", "+00:00")).astimezone(TIMEZONE)
-                yt.schedule_broadcast(start_time)
-
-            time.sleep(5)
-
-            # Start broadcasts
-            for start_time in scheduled.keys():
-                if start_time <= now:
-                    yt.start_broadcast(start_time)
-
-                    # Wait until it's actually live (or otherwise done)
-                    status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
-                    while status not in ("live", "complete", "revoked"):
-                        status = yt.get_broadcast_status(scheduled[start_time]["id"])["lifeCycleStatus"]
-                        time.sleep(20)
-
-                    # Update the start time
-                    yt.update_video_start_time(scheduled[start_time]["id"])
-
-            time.sleep(5)
-
-            # Finish broadcasts
-            for start_time in live.keys():
-                end_time = datetime.fromisoformat(
-                    live[start_time]["snippet"]["scheduledEndTime"].replace(
-                        "Z", "+00:00"))
-                if end_time <= now:
-                    yt.end_broadcast(start_time)
-                    yt.update_video_end_time(live[start_time]["id"])
-
-            time.sleep(5)
+            process_broadcasts(now, yt)
 
             # If the time is divisible by 5, log the stream status
             if now.minute % 5 == 0:
@@ -792,8 +802,7 @@ def main():
                     time.sleep(30)
 
     except Exception as error:
-        LOGGER.error("\n\n")
-        LOGGER.exception("There was an exception!!")
+        LOGGER.exception("\n\nThere was an exception!!")
         send_error_email(email_config, traceback.format_exc(), log_filename)
         raise Exception from error
 
