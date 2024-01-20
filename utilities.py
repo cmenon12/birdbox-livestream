@@ -61,6 +61,24 @@ def load_config(filename: str) -> configparser.ConfigParser():
     return parser
 
 
+def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
+    """Send an email.
+
+    :param config: the config for the email
+    :type config: configparser.SectionProxy
+    :param message: the message to send
+    :type message: MIMEMultipart
+    """
+
+    with smtplib.SMTP_SSL(config["smtp_host"],
+                          int(config["smtp_port"]),
+                          context=ssl.create_default_context()) as server:
+        server.login(config["username"], config["password"])
+        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
+                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
+                        message.as_string())
+
+
 def send_error_email(config: configparser.SectionProxy, trace: str,
                      filename: str) -> None:
     """Send an email about the error.
@@ -102,14 +120,8 @@ def send_error_email(config: configparser.SectionProxy, trace: str,
                     f"{filename}")
     message.attach(part)
 
-    # Create the SMTP connection and send the email
-    with smtplib.SMTP_SSL(config["smtp_host"],
-                          int(config["smtp_port"]),
-                          context=ssl.create_default_context()) as server:
-        server.login(config["username"], config["password"])
-        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
-                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
-                        message.as_string())
+    # Send the email
+    send_email(config, message)
 
     LOGGER.info("Error email sent successfully!\n")
 

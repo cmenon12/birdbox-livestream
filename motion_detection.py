@@ -5,9 +5,6 @@ import email.utils
 import json
 import logging
 import os
-import re
-import smtplib
-import ssl
 import time
 import traceback
 from datetime import datetime
@@ -244,14 +241,8 @@ def send_motion_email(
 
     LOGGER.debug("Message is: \n%s.", message)
 
-    # Create the SMTP connection and send the email
-    with smtplib.SMTP_SSL(config["smtp_host"],
-                          int(config["smtp_port"]),
-                          context=ssl.create_default_context()) as server:
-        server.login(config["username"], config["password"])
-        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
-                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
-                        message.as_string())
+    # Send the email
+    utilities.send_email(config, message)
 
     LOGGER.info("Motion email sent successfully!\n")
 
