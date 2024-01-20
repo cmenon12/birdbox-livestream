@@ -25,6 +25,7 @@ from googleapiclient.discovery import build
 from pytz import timezone
 
 import google_services
+import utilities
 import yt_livestream
 import yt_types
 
@@ -37,6 +38,9 @@ CONFIG_FILENAME = "config.ini"
 
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
+
+# The filename to use for the log file
+LOG_FILENAME = f"birdbox-livestream-motion-detection-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
 
 # All the motion detection parameters
 MOTION_DETECTION_PARAMS = {
@@ -256,7 +260,7 @@ def main():
     """Runs the motion detection script indefinitely."""
 
     # Get the config
-    config = yt_livestream.load_config(CONFIG_FILENAME)
+    config = utilities.load_config(CONFIG_FILENAME)
     yt_config = config["YouTubeLivestream"]
     email_config = config["email"]
     motion_config = config["motion_detection"]
@@ -354,25 +358,15 @@ def main():
         LOGGER.exception("\n\nThere was an exception!!")
         os.chdir(old_cwd)
         LOGGER.debug("Changed working directory to %s.", os.getcwd())
-        yt_livestream.send_error_email(
-            email_config, traceback.format_exc(), log_filename)
+        utilities.send_error_email(
+            email_config, traceback.format_exc(), LOG_FILENAME)
         raise Exception from error
 
 
 if __name__ == "__main__":
 
     # Prepare the log
-    Path("./logs").mkdir(parents=True, exist_ok=True)
-    log_filename = f"birdbox-livestream-motion-detection-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
-    log_format = "%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s"
-    log_handler = logging.FileHandler(
-        f"./logs/{log_filename}", mode="a", encoding="utf-8")
-    log_handler.setFormatter(logging.Formatter(log_format))
-    logging.basicConfig(
-        format=log_format,
-        level=logging.DEBUG,
-        handlers=[log_handler])
-    LOGGER = logging.getLogger(__name__)
+    LOGGER = utilities.prepare_logging(LOG_FILENAME)
 
     # Parse the args
     parser = argparse.ArgumentParser()
