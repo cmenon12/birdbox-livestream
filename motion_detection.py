@@ -5,9 +5,6 @@ import email.utils
 import json
 import logging
 import os
-import re
-import smtplib
-import ssl
 import time
 import traceback
 from datetime import datetime
@@ -25,6 +22,7 @@ from googleapiclient.discovery import build
 from pytz import timezone
 
 import google_services
+import utilities
 import yt_livestream
 import yt_types
 
@@ -37,6 +35,9 @@ CONFIG_FILENAME = "config.ini"
 
 # The timezone to use throughout
 TIMEZONE = timezone("Europe/London")
+
+# The filename to use for the log file
+LOG_FILENAME = f"birdbox-livestream-motion-detection-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
 
 # All the motion detection parameters
 MOTION_DETECTION_PARAMS = {
@@ -240,23 +241,91 @@ def send_motion_email(
 
     LOGGER.debug("Message is: \n%s.", message)
 
-    # Create the SMTP connection and send the email
-    with smtplib.SMTP_SSL(config["smtp_host"],
-                          int(config["smtp_port"]),
-                          context=ssl.create_default_context()) as server:
-        server.login(config["username"], config["password"])
-        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
-                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
-                        message.as_string())
+    # Send the email
+    utilities.send_email(config, message)
 
     LOGGER.info("Motion email sent successfully!\n")
+
+
+def process_video(video_id: str, yt: google_services.YouTube,
+                  yt_config: configparser.SectionProxy,
+                  download_folder: Path, old_cwd: str,
+                  email_config: configparser.SectionProxy):
+    """Process a video.
+
+    :param video_id: the YouTube ID of the video
+    :type video_id: str
+    :param yt: the YouTube object
+    :type yt: google_services.YouTube
+    :param yt_config: the config for YouTube
+    :type yt_config: configparser.SectionProxy
+    :param download_folder: the folder to download to
+    :type download_folder: Path
+    :param old_cwd: the starting working directory
+    :type old_cwd: str
+    :param email_config: the config for email
+    :type email_config: configparser.SectionProxy
+    """
+
+    print(f"{'Downloading' if args.download_only else 'Processing'} {video_id}...")
+
+    # Try to download the video, but just skip for now if it fails
+    try:
+        os.chdir(download_folder)
+        LOGGER.debug("Changed working directory to %s.", os.getcwd())
+        filename = download_video(video_id)
+        os.chdir(old_cwd)
+        LOGGER.debug("Changed working directory to %s.", os.getcwd())
+        filename = str(download_folder / filename)
+        LOGGER.debug("filename is: %s.", filename)
+    except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
+        LOGGER.exception(
+            "There was an error with downloading the video!")
+        print("There was an error with downloading the video!")
+        print(f"{traceback.format_exc()}\n")
+        os.chdir(old_cwd)
+        LOGGER.debug("Changed working directory to %s.", os.getcwd())
+
+        # Record no motion if the recording is unavailable
+        if "This live stream recording is not available." in error.msg:
+            update_motion_status(yt.get_service(), video_id,
+                                 "No motion was detected in this video as the recording is not available 😢.")
+            print("Marked the video as having no motion.")
+
+        return
+
+    LOGGER.debug(
+        "%s is %s big.",
+        filename,
+        humanize.naturalsize(
+            os.path.getsize(filename)))
+
+    if not args.download_only:
+
+        # Run motion detection
+        motion_desc = get_motion_timestamps(filename)
+        update_motion_status(
+            yt.get_service(), video_id, motion_desc)
+        if "No motion" not in motion_desc:
+            send_motion_email(email_config, video_id, motion_desc)
+            yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
+        else:
+            try:
+                send2trash.send2trash(filename)
+            except send2trash.TrashPermissionError as error:
+                LOGGER.exception("Could not delete %s!", filename)
+                print(f"Could not delete {filename}!")
+                print(str(error))
+                print(traceback.format_exc())
+
+    print(f"{'Downloaded' if args.download_only else 'Processed'} {video_id} successfully!\n")
 
 
 def main():
     """Runs the motion detection script indefinitely."""
 
     # Get the config
-    config = yt_livestream.load_config(CONFIG_FILENAME)
+    config = utilities.load_config(CONFIG_FILENAME)
     yt_config = config["YouTubeLivestream"]
     email_config = config["email"]
     motion_config = config["motion_detection"]
@@ -294,58 +363,7 @@ def main():
 
             # Process them
             for video_id in new_ids:
-                print(f"{'Downloading' if args.download_only else 'Processing'} {video_id}...")
-
-                # Try to download the video, but just skip for now if it fails
-                try:
-                    os.chdir(download_folder)
-                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
-                    filename = download_video(video_id)
-                    os.chdir(old_cwd)
-                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
-                    filename = str(download_folder / filename)
-                    LOGGER.debug("filename is: %s.", filename)
-                except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
-                    LOGGER.exception(
-                        "There was an error with downloading the video!")
-                    print("There was an error with downloading the video!")
-                    print(f"{traceback.format_exc()}\n")
-                    os.chdir(old_cwd)
-                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
-
-                    # Record no motion if the recording is unavailable
-                    if "This live stream recording is not available." in error.msg:
-                        update_motion_status(yt.get_service(), video_id,
-                                             "No motion was detected in this video as the recording is not available 😢.")
-                        print("Marked the video as having no motion.")
-
-                    continue
-                else:
-                    LOGGER.debug(
-                        "%s is %s big.",
-                        filename,
-                        humanize.naturalsize(
-                            os.path.getsize(filename)))
-
-                    if not args.download_only:
-
-                        # Run motion detection
-                        motion_desc = get_motion_timestamps(filename)
-                        update_motion_status(
-                            yt.get_service(), video_id, motion_desc)
-                        if "No motion" not in motion_desc:
-                            send_motion_email(email_config, video_id, motion_desc)
-                            yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
-                        else:
-                            try:
-                                send2trash.send2trash(filename)
-                            except send2trash.TrashPermissionError as error:
-                                LOGGER.exception("Could not delete %s!", filename)
-                                print(f"Could not delete {filename}!")
-                                print(str(error))
-                                print(traceback.format_exc())
-
-                    print(f"{'Downloaded' if args.download_only else 'Processed'} {video_id} successfully!\n")
+                process_video(video_id, yt, yt_config, download_folder, old_cwd, email_config)
 
             # Wait before repeating
             time.sleep(15 * 60)
@@ -354,25 +372,15 @@ def main():
         LOGGER.exception("\n\nThere was an exception!!")
         os.chdir(old_cwd)
         LOGGER.debug("Changed working directory to %s.", os.getcwd())
-        yt_livestream.send_error_email(
-            email_config, traceback.format_exc(), log_filename)
+        utilities.send_error_email(
+            email_config, traceback.format_exc(), LOG_FILENAME)
         raise Exception from error
 
 
 if __name__ == "__main__":
 
     # Prepare the log
-    Path("./logs").mkdir(parents=True, exist_ok=True)
-    log_filename = f"birdbox-livestream-motion-detection-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
-    log_format = "%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s"
-    log_handler = logging.FileHandler(
-        f"./logs/{log_filename}", mode="a", encoding="utf-8")
-    log_handler.setFormatter(logging.Formatter(log_format))
-    logging.basicConfig(
-        format=log_format,
-        level=logging.DEBUG,
-        handlers=[log_handler])
-    LOGGER = logging.getLogger(__name__)
+    LOGGER = utilities.prepare_logging(LOG_FILENAME)
 
     # Parse the args
     parser = argparse.ArgumentParser()

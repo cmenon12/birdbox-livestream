@@ -9,27 +9,19 @@ are created in advance before being started and stopped on schedule.
 
 import ast
 import configparser
-import email.utils
 import json
 import logging
-import re
-import smtplib
-import ssl
 import time
 import traceback
 from datetime import datetime, timedelta
-from email import encoders
-from email.mime.base import MIMEBase
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from enum import Enum, auto
-from pathlib import Path
 from typing import Optional, Dict
 
 import googleapiclient
 from pytz import timezone
 
 import google_services
+import utilities
 import yt_types
 
 __author__ = "Christopher Menon"
@@ -45,6 +37,8 @@ TIMEZONE = timezone("Europe/London")
 # The max broadcasts to schedule in advance
 MAX_SCHEDULED_BROADCASTS = 2
 
+# The filename to use for the log file
+LOG_FILENAME = f"birdbox-livestream-yt-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
 
 class BroadcastTypes(Enum):
     """The possible types for a broadcast, including an 'all' type."""
@@ -639,57 +633,7 @@ class YouTubeLivestream(google_services.YouTube):
         LOGGER.info("Unused broadcasts cleaned up successfully!")
 
 
-def send_error_email(config: configparser.SectionProxy, trace: str,
-                     filename: str) -> None:
-    """Send an email about the error.
 
-    :param config: the config for the email
-    :type config: configparser.SectionProxy
-    :param trace: the stack trace of the exception
-    :type trace: str
-    :param filename: the filename of the log file to attach
-    :type filename: str
-    """
-
-    LOGGER.info("Sending the error email...")
-
-    # Create the message
-    message = MIMEMultipart("alternative")
-    message["Subject"] = "ERROR with birdbox-livestream!"
-    message["To"] = config["to"]
-    message["From"] = config["from"]
-    message["X-Priority"] = "1"
-    message["Date"] = email.utils.formatdate()
-    email_id = email.utils.make_msgid(domain=config["smtp_host"])
-    message["Message-ID"] = email_id
-
-    # Create and attach the text
-    text = f"{trace}\n\n———\nThis email was sent automatically by a computer program (" \
-           f"https://github.com/cmenon12/birdbox-livestream). "
-    message.attach(MIMEText(text, "plain"))
-
-    LOGGER.debug("Message is: \n%s.", message)
-
-    # Attach the log
-    part = MIMEBase("text", "plain")
-    part.set_payload(open(f"./logs/{filename}", "r").read())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition",
-                    f"attachment; filename=\"{filename}\"")
-    part.add_header("Content-Description",
-                    f"{filename}")
-    message.attach(part)
-
-    # Create the SMTP connection and send the email
-    with smtplib.SMTP_SSL(config["smtp_host"],
-                          int(config["smtp_port"]),
-                          context=ssl.create_default_context()) as server:
-        server.login(config["username"], config["password"])
-        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
-                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
-                        message.as_string())
-
-    LOGGER.info("Error email sent successfully!\n")
 
 
 def process_broadcasts(now: datetime, yt: YouTubeLivestream, pause_time: int = 5):
@@ -737,33 +681,13 @@ def process_broadcasts(now: datetime, yt: YouTubeLivestream, pause_time: int = 5
     time.sleep(pause_time)
 
 
-def load_config(filename: str = CONFIG_FILENAME) -> configparser.SectionProxy:
-    """Load the config file."""
-
-    # Check that the config file exists
-    try:
-        open(filename)
-        LOGGER.info("Loaded config %s.", filename)
-    except FileNotFoundError as error:
-        print("The config file doesn't exist!")
-        LOGGER.info("Could not find config %s, exiting.", filename)
-        time.sleep(5)
-        raise FileNotFoundError("The config file doesn't exist!") from error
-
-    # Fetch info from the config
-    parser = configparser.ConfigParser()
-    parser.read(filename)
-
-    return parser
-
-
 def main():
     """Runs the livestream script indefinitely."""
 
     # Get the config
-    parser = load_config()
-    yt_config = parser["YouTubeLivestream"]
-    email_config = parser["email"]
+    parser = utilities.load_config(CONFIG_FILENAME)
+    yt_config: configparser.SectionProxy = parser["YouTubeLivestream"]
+    email_config: configparser.SectionProxy = parser["email"]
 
     try:
         yt = YouTubeLivestream(yt_config)
@@ -803,24 +727,14 @@ def main():
 
     except Exception as error:
         LOGGER.exception("\n\nThere was an exception!!")
-        send_error_email(email_config, traceback.format_exc(), log_filename)
+        utilities.send_error_email(email_config, traceback.format_exc(), LOG_FILENAME)
         raise Exception from error
 
 
 if __name__ == "__main__":
 
     # Prepare the log
-    Path("./logs").mkdir(parents=True, exist_ok=True)
-    log_filename = f"birdbox-livestream-yt-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
-    logging.basicConfig(
-        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
-        level=logging.DEBUG,
-        handlers=[
-            logging.FileHandler(
-                f"./logs/{log_filename}",
-                mode="a",
-                encoding="utf-8")])
-    LOGGER = logging.getLogger(__name__)
+    LOGGER = utilities.prepare_logging(LOG_FILENAME)
 
     # Run it
     main()
