@@ -11,14 +11,16 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Union
 
 import dvr_scan
 import googleapiclient
+import html2text
 import humanize
 import send2trash
 import yt_dlp
 from googleapiclient.discovery import build
+from jinja2 import Template
 from pytz import timezone
 
 import google_services
@@ -116,13 +118,13 @@ def download_video(video_id: str) -> str:
     return filename
 
 
-def get_motion_timestamps(filename: str) -> str:
-    """Detect motion and output a description of when it occurs.
+def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
+    """Detect motion and return a list of motion events.
 
     :param filename: the video file to search
     :type filename: str
-    :return: a description of the motion detected
-    :rtype: str
+    :return: a list of motion events
+    :rtype: List[Dict[str, str]]
     """
 
     LOGGER.info("Detecting motion...")
@@ -138,37 +140,30 @@ def get_motion_timestamps(filename: str) -> str:
         roi=MOTION_DETECTION_PARAMS["roi"],
         threshold=MOTION_DETECTION_PARAMS["threshold"]
     )
-    result = scan.scan_motion()
-    if len(result) == 0:
-        output = "No motion was detected in this video 😢."
-    elif len(result) == 1:
-        output = "\n\nMotion was detected at "
-        duration = int(result[0][1].get_seconds() - result[0][0].get_seconds())
-        output += f"{result[0][0].get_timecode(0)} for {duration} second{'s' if duration != 1 else ''}.\n"
-    else:
-        output = "\n\nMotion was detected at the following points:\n"
-        for item in result:
-            duration = int(item[1].get_seconds() - item[0].get_seconds())
-            output += f" • {item[0].get_timecode(0)} for {duration} second{'s' if duration != 1 else ''}.\n"
-    output += f"\n\nMOTION_DETECTION_PARAMS={MOTION_DETECTION_PARAMS}"
-    LOGGER.debug("Output is: \n%s.", output)
+    motion = scan.scan_motion()
+    result = []
+    for event in motion:
+        result.append({"start": event[0].get_timecode(0),
+                       "duration": event[1].get_seconds() - event[0].get_seconds()})
+
+    LOGGER.debug("Motion result is: \n%s.", json.dumps(result, indent=4))
 
     LOGGER.info("Motion detected successfully!")
-    return output
+    return result
 
 
 def update_motion_status(
         service: googleapiclient.discovery.Resource,
         video_id: str,
-        motion_desc: str) -> None:
+        motion: Union[List[Dict[str, str]], Dict[str, str]]) -> None:
     """Update the video with motion information.
 
     :param service: the YouTube API service
     :type service: googleapiclient.discovery.Resource
     :param video_id: the ID of the video to update
     :type video_id: str
-    :param motion_desc: a description of the motion detected
-    :type motion_desc: str
+    :param motion: a list of motion events or description & suffix
+    :type motion: Union[List[Dict[str, str]], Dict[str, str]]
     """
 
     LOGGER.info("Appending to the video description...")
@@ -179,22 +174,28 @@ def update_motion_status(
         service.videos().list(id=video_id, part="id,snippet"))
     LOGGER.debug("Videos is: \n%s.", json.dumps(videos, indent=4))
 
-    # Prepare a new title
-    if "No motion" in motion_desc:
-        title = f"{videos['items'][0]['snippet']['title']} (no motion)"
+    # Prepare a new title and description
+    if isinstance(motion, dict):
+        suffix = motion["suffix"]
+        motion_desc = motion["description"]
+    elif len(motion) == 0:
+        suffix = "(no motion)"
+        motion_desc = "No motion was detected in this video 😢."
+    elif len(motion) == 1:
+        suffix = "(1 action)"
+        motion_desc = f"\n\nMotion was detected at {motion[0]['start']} for {motion[0]['duration']} second{'s' if motion[0]['duration'] != 1 else ''}.\n"
     else:
-        count = motion_desc.count(" for ")
-        if count == 1:
-            title = f"{videos['items'][0]['snippet']['title']} ({count} action)"
-        else:
-            title = f"{videos['items'][0]['snippet']['title']} ({count} actions)"
+        suffix = f"({len(motion)} actions)"
+        motion_desc = "\n\nMotion was detected at the following points:\n"
+        for item in motion:
+            motion_desc += f" • {item['start']} for {item['duration']} second{'s' if item['duration'] != 1 else ''}.\n"
 
     # Prepare the body
     body = {"id": video_id, "snippet": {}}
     body["snippet"]["categoryId"] = videos["items"][0]["snippet"]["categoryId"]
     body["snippet"]["tags"] = videos["items"][0]["snippet"].get("tags", [])
     body["snippet"]["description"] = f"{videos['items'][0]['snippet']['description']} {motion_desc}"
-    body["snippet"]["title"] = title
+    body["snippet"]["title"] = f"{videos['items'][0]['snippet']['title']} {suffix}"
     body["snippet"]["defaultLanguage"] = videos["items"][0]["snippet"]["defaultLanguage"]
 
     LOGGER.debug("Body is: \n%s.", body)
@@ -211,15 +212,15 @@ def update_motion_status(
 def send_motion_email(
         config: configparser.SectionProxy,
         video_id: str,
-        motion_desc: str) -> None:
+        motion: List[Dict[str, str]]) -> None:
     """Send an email about the motion that was detected.
 
     :param config: the config to use
     :type config: configparser.SectionProxy
     :param video_id: the ID of the video
     :type video_id: str
-    :param motion_desc: a description of the motion detected
-    :type motion_desc: str
+    :param motion: a list of the motion events detected
+    :type motion: List[Dict[str, str]]
     """
 
     LOGGER.info("Sending the motion email...")
@@ -233,13 +234,23 @@ def send_motion_email(
     email_id = email.utils.make_msgid(domain=config["smtp_host"])
     message["Message-ID"] = email_id
 
-    # Create and attach the text
-    text = f"We found some motion in this video: https://youtu.be/{video_id} {motion_desc}" \
-           f"\n\n———\nThis email was sent automatically by a computer program (" \
-           f"https://github.com/cmenon12/birdbox-livestream). "
-    message.attach(MIMEText(text, "plain"))
+    # Render the template
+    with open("email-template.html") as file:
+        template = Template(file.read())
+        html = template.render(motion_timestamps=motion,
+                               motion_params=MOTION_DETECTION_PARAMS,
+                               video_url=f"https://youtu.be/{video_id}")
 
-    LOGGER.debug("Message is: \n%s.", message)
+        # Create the plain-text version of the message
+        text_maker = html2text.HTML2Text()
+        text_maker.ignore_links = True
+        text_maker.bypass_tables = False
+        text = text_maker.handle(html)
+
+    message.attach(MIMEText(text, "plain"))
+    message.attach(MIMEText(html, "html"))
+
+    LOGGER.debug("Message is: \n%s.", text)
 
     # Send the email
     utilities.send_email(config, message)
@@ -289,7 +300,8 @@ def process_video(video_id: str, yt: google_services.YouTube,
         # Record no motion if the recording is unavailable
         if "This live stream recording is not available." in error.msg:
             update_motion_status(yt.get_service(), video_id,
-                                 "No motion was detected in this video as the recording is not available 😢.")
+                                 {"suffix": "(no motion)",
+                                  "description": "No motion was detected in this video as the recording is not available 😢."})
             print("Marked the video as having no motion.")
 
         return
@@ -303,11 +315,11 @@ def process_video(video_id: str, yt: google_services.YouTube,
     if not args.download_only:
 
         # Run motion detection
-        motion_desc = get_motion_timestamps(filename)
+        motion = get_motion_timestamps(filename)
         update_motion_status(
-            yt.get_service(), video_id, motion_desc)
-        if "No motion" not in motion_desc:
-            send_motion_email(email_config, video_id, motion_desc)
+            yt.get_service(), video_id, motion)
+        if len(motion) > 0:
+            send_motion_email(email_config, video_id, motion)
             yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
         else:
             try:
