@@ -19,18 +19,23 @@
     "{{#if isMajor}}:rotating_light: Be careful, this is a major update.{{/if}}",
     "{{#if (equals updateType 'minor')}}:warning: This is a minor update.{{/if}}"
   ],
-  "prCreation": "immediate",
   "prConcurrentLimit": 20,
   "prHourlyLimit": 10,
   "prTitleStrict": true,
   "minimumReleaseAge": "5 days",
   "rebaseWhen": "behind-base-branch",
   "separateMinorPatch": true,
+  "labels": [
+    "dependencies"
+  ],
+  "platformCommit": true,
+  "schedule": "at 4pm on friday",
   "patch": {
     "groupName": "all patch updates",
     "automerge": true,
     "ignoreTests": true,
-    "description": "Group and automerge all patch updates together"
+    "schedule": "at 4pm every day",
+    "description": "Group and automerge all patch updates together every day at 4pm"
   },
   "minor": {
     "dependencyDashboardApproval": true,
@@ -40,9 +45,6 @@
     "dependencyDashboardApproval": true,
     "description": "Require dashboard approval to create major PRs"
   },
-  "labels": ["dependencies"],
-  "platformCommit": true,
-  "schedule": "on friday at 4pm",
   "packageRules": [
     {
       "matchPackageNames": ["google-api-python-client"],
@@ -50,7 +52,8 @@
       "dependencyDashboardApproval": false,
       "automerge": true,
       "ignoreTests": true,
-      "description": "Automerge minor updates for this package"
+      "schedule": "at 4pm every day",
+      "description": "Automerge minor updates for this package every day at 4pm"
     }
   ]
 }
