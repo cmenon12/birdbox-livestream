@@ -13,8 +13,8 @@ __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
 import utilities
-from google_services import YouTube
-from yt_types import YouTubePlaylist
+from yt_livestream import YouTubeLivestream
+from yt_types import YouTubePlaylist, YouTubeLiveBroadcast
 
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
@@ -26,15 +26,80 @@ TIMEZONE = timezone("Europe/London")
 LOG_FILENAME = f"birdbox-livestream-yt-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
 
 
-def update_weekly_playlists(yt: YouTube, start_date: datetime = None, end_date: datetime = None,
-                            delete: bool = False, privacy: str = "private", ):
+def update_no_motion_videos(yt: YouTubeLivestream, start_date: datetime = None, end_date: datetime = None,
+                            delete: bool = False, privacy: str = "private"):
+    LOGGER.info("Updating videos...")
+    LOGGER.info(locals())
+
+    # Download all videos
+    videos: List[YouTubeLiveBroadcast] = []
+    next_page_token = ""
+    while next_page_token is not None:
+        response = yt.execute_request(yt.get_service().liveBroadcasts().list(
+            part="id,snippet,status",
+            broadcastStatus="completed",
+            mine=True,
+            maxResults=50,
+            pageToken=next_page_token
+        ))
+
+        # Save the playlists we want to process
+        LOGGER.debug("Found %s new videos.", len(response["items"]))
+        for video in response["items"]:
+            if "(no motion)" in video["snippet"]["title"]:
+                date = datetime.strptime(video["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
+                if (start_date and date < start_date) or (end_date and date > end_date):
+                    continue
+                if not delete and video["status"]["privacyStatus"] == privacy:
+                    continue
+                videos.append(video)
+
+        next_page_token = response.get("nextPageToken")
+
+    LOGGER.debug("Found %s videos in total.", len(videos))
+
+    # Ask the user to confirm
+    titles = [video["snippet"]["title"] for video in videos]
+    print(
+        f"Are you sure you want to {'delete' if delete else privacy} all these videos?\n{json.dumps(titles, indent=4)}")
+    answer = input("y/n: ")
+    LOGGER.info("User chose option %s.", answer)
+
+    if answer != "y":
+        LOGGER.info("User chose not to continue, exiting.")
+        sys.exit()
+
+    all_playlists = yt.list_all_playlists()
+
+    for video in videos:
+
+        if delete is True:
+            start_time = datetime.strptime(video["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
+            yt.delete_broadcast(video["id"], start_time, all_playlists)
+            r = yt.execute_request(yt.get_service().videos().delete(
+                id=video["id"]
+            ))
+            LOGGER.debug("Deleted video %s %s.", video["id"], video["snippet"]["title"])
+        else:
+            body = {"id": video["id"], "status": {"privacyStatus": "private"}}
+            r = yt.execute_request(yt.get_service().videos().update(
+                part="id,status",
+                body=body
+            ))
+            LOGGER.debug("Updated video %s %s.", video["id"], video["snippet"]["title"])
+
+    LOGGER.info("Updated the videos successfully!")
+
+
+def update_weekly_playlists(yt: YouTubeLivestream, start_date: datetime = None, end_date: datetime = None,
+                            delete: bool = False, privacy: str = "private"):
     LOGGER.info("Updating playlists...")
     LOGGER.info(locals())
 
     # Download all playlists
     playlists: List[YouTubePlaylist] = []
     next_page_token = ""
-    while True:
+    while next_page_token is not None:
         response = yt.execute_request(yt.get_service().playlists().list(
             part="id,snippet,status",
             mine=True,
@@ -53,10 +118,7 @@ def update_weekly_playlists(yt: YouTube, start_date: datetime = None, end_date: 
                     continue
                 playlists.append(playlist)
 
-        try:
-            next_page_token = response["nextPageToken"]
-        except KeyError:
-            break
+        next_page_token = response.get("nextPageToken")
 
     LOGGER.debug("Found %s playlists in total.", len(playlists))
 
@@ -96,10 +158,11 @@ def main():
     parser = utilities.load_config(CONFIG_FILENAME)
     yt_config: configparser.SectionProxy = parser["YouTubeLivestream"]
 
-    yt = YouTube(yt_config)
+    yt = YouTubeLivestream(yt_config)
 
     title = "What do you want to do?"
-    options = ["make weekly playlists private", "delete weekly playlists"]
+    options = ["make weekly playlists private", "delete weekly playlists",
+               "make no motion videos private", "delete no motion videos"]
     option, _ = pick(options, title)
     LOGGER.info("User chose option %s.", option)
 
@@ -112,7 +175,12 @@ def main():
     if option == "make weekly playlists private":
         update_weekly_playlists(yt, start_date, end_date, delete=False, privacy="private")
     elif option == "delete weekly playlists":
-        update_weekly_playlists(yt, start_date, end_date, delete=True, )
+        update_weekly_playlists(yt, start_date, end_date, delete=True)
+    elif option == "make no motion videos private":
+        update_no_motion_videos(yt, start_date, end_date, delete=False, privacy="private")
+    elif option == "delete no motion videos":
+        update_no_motion_videos(yt, start_date, end_date, delete=True)
+
 
 
 if __name__ == "__main__":
