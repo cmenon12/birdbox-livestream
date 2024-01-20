@@ -2,7 +2,7 @@ dvr-scan==1.5.1
 func-timeout==4.3.5
 google-api-python-client==2.113.0
 google-auth-httplib2==0.2.0
-google-auth-oauthlib==0.4.6
+google-auth-oauthlib==0.8.0
 humanize==4.9.0
 opencv-python==4.8.1.78
 progress-bar==8
