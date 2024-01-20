@@ -577,6 +577,32 @@ class YouTubeLivestream(google_services.YouTube):
         LOGGER.debug("Broadcast status of %s is: %s.", video_id, broadcasts["items"][0]["status"])
         return broadcasts["items"][0]["status"]
 
+    def delete_broadcast(self, video_id: str, start_time: datetime,
+                         all_playlists: list[yt_types.YouTubePlaylist] = None):
+        """Delete a broadcast and remove it from its playlist."""
+
+        LOGGER.info("Deleting broadcast %s...", video_id)
+
+        # Calculate the playlist title
+        playlist_title = (start_time - timedelta(
+            days=start_time.weekday())).strftime("W%W: w/c %d %b %Y")
+
+        if all_playlists is None:
+            all_playlists = self.list_all_playlists()
+
+        # Delete it from the playlist if it exists
+        for item in all_playlists:
+            if item["snippet"]["title"] == playlist_title:
+                LOGGER.debug("Deleting from playlist %s.", item)
+                self.delete_from_playlist(video_id, item["id"])
+                break
+
+        # Delete the broadcast
+        LOGGER.debug("Deleting broadcast %s.", video_id)
+        self.execute_request(self.get_service().liveBroadcasts().delete(id=video_id))
+
+        LOGGER.info("Broadcast deleted successfully!")
+
     def cleanup_unused_broadcasts(self):
         """Cleanup broadcasts that haven't started yet."""
 
@@ -615,20 +641,7 @@ class YouTubeLivestream(google_services.YouTube):
                 continue
             start_time = datetime.strptime(broadcast["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
 
-            # Calculate the playlist title
-            playlist_title = (start_time - timedelta(
-                days=start_time.weekday())).strftime("W%W: w/c %d %b %Y")
-
-            # Delete it from the playlist if it exists
-            for item in all_playlists:
-                if item["snippet"]["title"] == playlist_title:
-                    LOGGER.debug("Deleting from playlist %s.", item)
-                    self.delete_from_playlist(broadcast["id"], item["id"])
-                    break
-
-            # Delete the broadcast
-            LOGGER.debug("Deleting broadcast %s.", broadcast)
-            self.execute_request(self.get_service().liveBroadcasts().delete(id=broadcast["id"]))
+            self.delete_broadcast(broadcast["id"], start_time, all_playlists)
 
         LOGGER.info("Unused broadcasts cleaned up successfully!")
 
