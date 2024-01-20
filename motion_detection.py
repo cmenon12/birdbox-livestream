@@ -144,7 +144,7 @@ def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
     result = []
     for event in motion:
         result.append({"start": event[0].get_timecode(0),
-                       "duration": event[1].get_seconds() - event[0].get_seconds()})
+                       "duration": int(event[1].get_seconds() - event[0].get_seconds())})
 
     LOGGER.debug("Motion result is: \n%s.", json.dumps(result, indent=4))
 
@@ -189,6 +189,7 @@ def update_motion_status(
         motion_desc = "\n\nMotion was detected at the following points:\n"
         for item in motion:
             motion_desc += f" • {item['start']} for {item['duration']} second{'s' if item['duration'] != 1 else ''}.\n"
+    motion_desc += f"\n\n\nMOTION_DETECTION_PARAMS={MOTION_DETECTION_PARAMS}"
 
     # Prepare the body
     body = {"id": video_id, "snippet": {}}
@@ -227,7 +228,7 @@ def send_motion_email(
 
     # Create the message
     message = MIMEMultipart("alternative")
-    message["Subject"] = "Motion detected in the birdbox!"
+    message["Subject"] = f"Motion detected in the birdbox ({len(motion)} event{'s' if len(motion) > 1 else ''})"
     message["To"] = config["to"]
     message["From"] = config["from"]
     message["Date"] = email.utils.formatdate()
@@ -235,7 +236,7 @@ def send_motion_email(
     message["Message-ID"] = email_id
 
     # Render the template
-    with open("email-template.html") as file:
+    with open("motion-email-template.html") as file:
         template = Template(file.read())
         html = template.render(motion_timestamps=motion,
                                motion_params=MOTION_DETECTION_PARAMS,
