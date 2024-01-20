@@ -256,6 +256,80 @@ def send_motion_email(
     LOGGER.info("Motion email sent successfully!\n")
 
 
+def process_video(video_id: str, yt: google_services.YouTube,
+                  yt_config: configparser.SectionProxy,
+                  download_folder: Path, old_cwd: str,
+                  email_config: configparser.SectionProxy):
+    """Process a video.
+
+    :param video_id: the YouTube ID of the video
+    :type video_id: str
+    :param yt: the YouTube object
+    :type yt: google_services.YouTube
+    :param yt_config: the config for YouTube
+    :type yt_config: configparser.SectionProxy
+    :param download_folder: the folder to download to
+    :type download_folder: Path
+    :param old_cwd: the starting working directory
+    :type old_cwd: str
+    :param email_config: the config for email
+    :type email_config: configparser.SectionProxy
+    """
+
+    print(f"{'Downloading' if args.download_only else 'Processing'} {video_id}...")
+
+    # Try to download the video, but just skip for now if it fails
+    try:
+        os.chdir(download_folder)
+        LOGGER.debug("Changed working directory to %s.", os.getcwd())
+        filename = download_video(video_id)
+        os.chdir(old_cwd)
+        LOGGER.debug("Changed working directory to %s.", os.getcwd())
+        filename = str(download_folder / filename)
+        LOGGER.debug("filename is: %s.", filename)
+    except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
+        LOGGER.exception(
+            "There was an error with downloading the video!")
+        print("There was an error with downloading the video!")
+        print(f"{traceback.format_exc()}\n")
+        os.chdir(old_cwd)
+        LOGGER.debug("Changed working directory to %s.", os.getcwd())
+
+        # Record no motion if the recording is unavailable
+        if "This live stream recording is not available." in error.msg:
+            update_motion_status(yt.get_service(), video_id,
+                                 "No motion was detected in this video as the recording is not available 😢.")
+            print("Marked the video as having no motion.")
+
+        return
+
+    LOGGER.debug(
+        "%s is %s big.",
+        filename,
+        humanize.naturalsize(
+            os.path.getsize(filename)))
+
+    if not args.download_only:
+
+        # Run motion detection
+        motion_desc = get_motion_timestamps(filename)
+        update_motion_status(
+            yt.get_service(), video_id, motion_desc)
+        if "No motion" not in motion_desc:
+            send_motion_email(email_config, video_id, motion_desc)
+            yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
+        else:
+            try:
+                send2trash.send2trash(filename)
+            except send2trash.TrashPermissionError as error:
+                LOGGER.exception("Could not delete %s!", filename)
+                print(f"Could not delete {filename}!")
+                print(str(error))
+                print(traceback.format_exc())
+
+    print(f"{'Downloaded' if args.download_only else 'Processed'} {video_id} successfully!\n")
+
+
 def main():
     """Runs the motion detection script indefinitely."""
 
@@ -298,58 +372,7 @@ def main():
 
             # Process them
             for video_id in new_ids:
-                print(f"{'Downloading' if args.download_only else 'Processing'} {video_id}...")
-
-                # Try to download the video, but just skip for now if it fails
-                try:
-                    os.chdir(download_folder)
-                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
-                    filename = download_video(video_id)
-                    os.chdir(old_cwd)
-                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
-                    filename = str(download_folder / filename)
-                    LOGGER.debug("filename is: %s.", filename)
-                except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
-                    LOGGER.exception(
-                        "There was an error with downloading the video!")
-                    print("There was an error with downloading the video!")
-                    print(f"{traceback.format_exc()}\n")
-                    os.chdir(old_cwd)
-                    LOGGER.debug("Changed working directory to %s.", os.getcwd())
-
-                    # Record no motion if the recording is unavailable
-                    if "This live stream recording is not available." in error.msg:
-                        update_motion_status(yt.get_service(), video_id,
-                                             "No motion was detected in this video as the recording is not available 😢.")
-                        print("Marked the video as having no motion.")
-
-                    continue
-                else:
-                    LOGGER.debug(
-                        "%s is %s big.",
-                        filename,
-                        humanize.naturalsize(
-                            os.path.getsize(filename)))
-
-                    if not args.download_only:
-
-                        # Run motion detection
-                        motion_desc = get_motion_timestamps(filename)
-                        update_motion_status(
-                            yt.get_service(), video_id, motion_desc)
-                        if "No motion" not in motion_desc:
-                            send_motion_email(email_config, video_id, motion_desc)
-                            yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
-                        else:
-                            try:
-                                send2trash.send2trash(filename)
-                            except send2trash.TrashPermissionError as error:
-                                LOGGER.exception("Could not delete %s!", filename)
-                                print(f"Could not delete {filename}!")
-                                print(str(error))
-                                print(traceback.format_exc())
-
-                    print(f"{'Downloaded' if args.download_only else 'Processed'} {video_id} successfully!\n")
+                process_video(video_id, yt, yt_config, download_folder, old_cwd, email_config)
 
             # Wait before repeating
             time.sleep(15 * 60)
