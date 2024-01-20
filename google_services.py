@@ -7,9 +7,9 @@ import time
 import traceback
 from datetime import datetime
 from enum import Enum, auto
-from pathlib import Path
 from typing import Any, List, Optional
 
+import google
 import googleapiclient
 from func_timeout import func_set_timeout, FunctionTimedOut
 from google.auth.exceptions import RefreshError
@@ -65,46 +65,52 @@ class GoogleService:
         self.service_name = service_name
         self.service_version = service_version
         self.scopes = scopes
-        self.token_file = token_file if token_file else f"{service_name}_{service_version}.pickle"
+        self.token_file: str = token_file if token_file else f"{service_name}_{service_version}.pickle"
+
+    @func_set_timeout(AUTHORISATION_TIMEOUT)
+    def authorise_service(self, auth_type: AuthorisationTypes) -> googleapiclient.discovery.Resource:
+        """Authorise the request.
+
+        :param auth_type: how to authorise the request
+        :type auth_type: AuthorisationTypes
+        :return: the credentials
+        :rtype: google.oauth2.credentials.Credentials
+        """
+
+        # Open the browser for the user to authorise it
+        if auth_type is AuthorisationTypes.BROWSER:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CLIENT_SECRET_FILE, self.scopes)
+            print("Your browser should open automatically.")
+            return flow.run_local_server(port=0)
+
+        # Tell the user to authorise it themselves
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CLIENT_SECRET_FILE, self.scopes,
+                redirect_uri="http://localhost:1/")
+            auth_url, _ = flow.authorization_url(prompt="consent")
+            print(
+                f"Please visit this URL to authorise this application: {auth_url}")
+            if auth_type is AuthorisationTypes.PUSHBULLET and str(
+                    self.config["pushbullet_access_token"]).lower() != "false":
+                print("Requesting via Pushbullet...")
+                code = self.pushbullet_request_response(
+                    "Google API Authorisation", auth_url)
+            else:
+                code = input("Enter the authorisation code: ")
+            flow.fetch_token(code=code)
+            return flow.credentials
 
     def get_service(self,
-                    auth_type: AuthorisationTypes = AuthorisationTypes.PUSHBULLET) -> googleapiclient.discovery.Resource:
+                    auth_type: AuthorisationTypes = AuthorisationTypes.PUSHBULLET) -> google.auth.credentials.Credentials:
         """Authenticates the API, returning the service.
 
         :return: the API service (a Resource)
-        :rtype: googleapiclient.discovery.Resource
+        :rtype: google.auth.credentials.Credentials
         """
 
         LOGGER.info("Authorising service...")
-
-        @func_set_timeout(AUTHORISATION_TIMEOUT)
-        def authorise():
-            """Authorise the request."""
-
-            # Open the browser for the user to authorise it
-            if auth_type is AuthorisationTypes.BROWSER:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRET_FILE, self.scopes)
-                print("Your browser should open automatically.")
-                return flow.run_local_server(port=0)
-
-            # Tell the user to authorise it themselves
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRET_FILE, self.scopes,
-                    redirect_uri="http://localhost:1/")
-                auth_url, _ = flow.authorization_url(prompt="consent")
-                print(
-                    f"Please visit this URL to authorise this application: {auth_url}")
-                if auth_type is AuthorisationTypes.PUSHBULLET and str(
-                        self.config["pushbullet_access_token"]).lower() != "false":
-                    print("Requesting via Pushbullet...")
-                    code = self.pushbullet_request_response(
-                        "Google API Authorisation", auth_url)
-                else:
-                    code = input("Enter the authorisation code: ")
-                flow.fetch_token(code=code)
-                return flow.credentials
 
         # Attempt to access pre-existing credentials
         if os.path.exists(self.token_file):
@@ -119,7 +125,7 @@ class GoogleService:
             except RefreshError:
                 os.remove(self.token_file)
                 try:
-                    credentials = authorise()
+                    credentials = self.authorise_service(auth_type)
                 except FunctionTimedOut as error:
                     raise FunctionTimedOut(
                         f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google API.") from error
@@ -127,7 +133,7 @@ class GoogleService:
         # If they don't exist then get some new ones
         else:
             try:
-                credentials = authorise()
+                credentials = self.authorise_service(auth_type)
             except FunctionTimedOut as error:
                 raise FunctionTimedOut(
                     f"Waited {AUTHORISATION_TIMEOUT} seconds to authorise Google API.") from error
@@ -338,20 +344,5 @@ class YouTube(GoogleService):
         LOGGER.info("Deleted the video from the playlist successfully!")
 
 
-if __name__ == "__main__":
-
-    # Prepare the log
-    Path("./logs").mkdir(parents=True, exist_ok=True)
-    log_filename = f"birdbox-livestream-youtube-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
-    logging.basicConfig(
-        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
-        level=logging.DEBUG,
-        handlers=[
-            logging.FileHandler(
-                f"./logs/{log_filename}",
-                mode="a",
-                encoding="utf-8")])
-    LOGGER = logging.getLogger(__name__)
-
-else:
+if __name__ != "__main__":
     LOGGER = logging.getLogger(__name__)
