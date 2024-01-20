@@ -3,8 +3,6 @@
 <head>
     <meta content="width=device-width" name="viewport">
     <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
-    <title>{{ changes["societyName"] }}'s balance has changed
-        by {{ changes["grandTotal"]["changeInTotalBalance"] }}</title>
     <style>
 
         @media only screen and (max-width: 650px) {
@@ -136,152 +134,26 @@
                                         <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
                                             Hello,</p>
                                         <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                            There have been some changes to the ledger for
-                                            {{ changes["societyName"] }}{{ last_check }}. These are
-                                            listed
-                                            below.</p>
-                                        {# For each cost code #}
-                                        {# Create the table header #}
-                                        {% for name, value in changes["costCodes"].items() %}
-                                        <br>
-                                        <h3 style="margin-bottom: 5px">{{ name }}</h3>
-                                        <table align="left"
-                                               bgcolor="#FFFFFF"
-                                               class="blueTable"
-                                               style="font-family: Tahoma, Geneva, sans-serif; border: 1px solid #4AABC4; background-color: #FFFFFF; width: 100%; text-align: left; border-collapse: collapse;"
-                                               width="100%">
-                                            <thead style="background: #4AABC4; border-bottom: 2px solid #444444;">
-                                            <tr>
-                                                <th align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center; font-size: 15px; font-weight: bold; color: #FFFFFF; border-left: none;">
-                                                    Date
-                                                </th>
-                                                <th align="left"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; font-size: 15px; font-weight: bold; color: #FFFFFF; border-left: 2px solid #D0E4F5; text-align: left;">
-                                                    Description
-                                                </th>
-                                                <th align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center; font-size: 15px; font-weight: bold; color: #FFFFFF; border-left: 2px solid #D0E4F5;">
-                                                    Amount
-                                                </th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-
-                                            {# For each entry in the cost code #}
-                                            {% for entry in value["entries"] %}
-                                            <tr>
-                                                <td align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center; font-size: 13px; color: #353744;">
-                                                    {{ entry["date"] }}
-                                                </td>
-                                                <td align="left"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; font-size: 13px; color: #353744; text-align: left;">
-                                                    {{ entry["description"] }}
-                                                </td>
-                                                {% if "-" in entry["money"] %}
-                                                <td align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center; font-size: 13px; color: darkred;">
-                                                    {{ entry["money"] }}
-                                                </td>
-                                                {% else %}
-                                                <td align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center; font-size: 13px; color: #353744;">
-                                                    {{ entry["money"] }}
-                                                </td>
-                                                {% endif %}
-                                            </tr>
+                                            Some motion was detected in the birdbox!</p>
+                                        {% if motion_timestamps|length > 1 %}
+                                        <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                                            Motion was detected at:</p>
+                                        <ul>
+                                            {% for timestamp in motion_timestamps %}
+                                            <li>{{ timestamp["start"] }} for {{ timestamp["length"] }} seconds.</li>
                                             {% endfor %}
-
-                                            {# Create the table footer #}
-                                            </tbody>
-                                            <tr class="tfoot"
-                                                style="font-size: 14px; font-weight: bold; color: #353744; border-top: 2px solid #444444; background: #8DC8DD;">
-                                                <td align="left"
-                                                    colspan="2"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: left;">
-                                                    Total change
-                                                    for {{ name }}
-                                                </td>
-                                                {% if "-" in value["changeInBalance"] %}
-                                                <td align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center; color: darkred;">
-                                                    {{ value["changeInBalance"] }}
-                                                </td>
-                                                {% else %}
-                                                <td align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center;">
-                                                    {{ value["changeInBalance"] }}
-                                                </td>
-                                                {% endif %}
-                                            </tr>
-                                            <tr class="tfoot"
-                                                style="font-size: 14px; font-weight: bold; color: #353744; border-top: none; background: #8DC8DD;">
-                                                <td align="left"
-                                                    colspan="2"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: left; font-size: 15px;">
-                                                    Total
-                                                    balance
-                                                    for {{ name }}
-                                                </td>
-                                                {% if "-" in value["balance"] %}
-                                                <td align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center; color: darkred; font-size: 15px;">
-                                                    {{ value["balance"] }}
-                                                </td>
-                                                {% else %}
-                                                <td align="center"
-                                                    style="border: 1px solid #4AABC4; padding: 2px 3px; text-align: center; font-size: 15px;">
-                                                    {{ value["balance"] }}
-                                                </td>
-                                                {% endif %}
-                                            </tr>
-                                        </table>
-                                        <br>
-                                        {% endfor %}
-
-                                        {# Print the total change #}
-                                        {% if "-" in changes["grandTotal"]["changeInTotalBalance"] %}
-                                        <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                            The sum of the above changes in the ledger is <b style="color: darkred">{{
-                                            changes["grandTotal"]["changeInTotalBalance"] }}</b>.
-                                        </p>
+                                        </ul>
                                         {% else %}
                                         <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                            The sum of the above changes in the ledger is
-                                            <b>{{ changes["grandTotal"]["changeInTotalBalance"] }}</b>.</p>
+                                            Motion was detected at {{ motion_timestamps[0]["start"] }} for {{
+                                            motion_timestamps[0]["length"] }} seconds.</p>
                                         {% endif %}
 
-                                        {# Print the total balance #}
-                                        {% if "-" in changes["grandTotal"]["totalBalance"] %}
                                         <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                            <b style="color: darkred"> The total balance
-                                                for {{ changes["societyName"] }} is
-                                                {{ changes["grandTotal"]["totalBalance"] }}</b>
-                                            {% else %}
+                                            The motion detection parameters were: <br><code>{{ motion_params }}</code>
                                         </p>
-                                        <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                            The total balance for {{ changes["societyName"] }} is
-                                            <b>{{ changes["grandTotal"]["totalBalance"] }}</b>
-                                            {% endif %}
-                                            {% if changes["grandTotal"]["balanceBroughtForward"] != "£0.00" %}
-                                            including {{ changes["grandTotal"]["balanceBroughtForward"] }} that
-                                            was
-                                            brought forward.</p>
-                                        {% else %}
-                                        .<p></p>
-                                        {% endif %}
 
                                         {# Print the buttons #}
-                                        <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                            Please see the attached PDF ledger{{ ledger_plurality }} for further
-                                            details, or click the buttons
-                                            below
-                                            to
-                                            open the
-                                            uploaded
-                                            ledger in Google Sheets & in Google Drive.</p>
-                                        <br>
                                         <table class="btn btn-primary btn-double"
                                                style="border-collapse: separate; mso-table-lspace: 0; mso-table-rspace: 0; box-sizing: border-box; width: 100%; table-layout: fixed; border-spacing: 20px 0;"
                                                width="100%">
@@ -295,27 +167,10 @@
                                                         <tr>
                                                             <td align="center"
                                                                 bgcolor="#1B73CA" style="font-family: Tahoma, sans-serif; font-size: 16px; border-radius: 5px; text-align: center; vertical-align: middle; background-color: #1B73CA;" valign="middle"><a
-                                                                    href="{{ sheet_url }}" rel="noopener"
+                                                                    href="{{ video_url }}" rel="noopener"
                                                                     style="border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; display: inline-block; font-size: 17px; font-weight: bold; font-family: 'Tahoma', sans-serif; margin: 0; padding: 10px 22px; text-decoration: none; text-transform: capitalize; background-color: #1B73CA; border-color: #1B73CA; color: #ffffff; line-height: normal;"
                                                                     target="_blank"><span
-                                                                    style="background-color: #1B73CA; border-color: #1B73CA; color: #ffffff; vertical-align: middle; line-height: normal;">Open the ledger in Google Sheets</span></a>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                                <td align="left"
-                                                    style="font-family: Tahoma, sans-serif; font-size: 16px; vertical-align: top; padding-bottom: 15px;"
-                                                    valign="top">
-                                                    <table style="border-collapse: separate; mso-table-lspace: 0; mso-table-rspace: 0; width: auto;">
-                                                        <tbody>
-                                                        <tr>
-                                                            <td align="center"
-                                                                bgcolor="#1B73CA" style="font-family: Tahoma, sans-serif; font-size: 16px; border-radius: 5px; text-align: center; vertical-align: middle; background-color: #1B73CA;" valign="middle"><a
-                                                                    href="{{ pdf_url }}" rel="noopener"
-                                                                    style="border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; display: inline-block; font-size: 17px; font-weight: bold; font-family: 'Tahoma', sans-serif; margin: 0; padding: 10px 22px; text-decoration: none; text-transform: capitalize; background-color: #1B73CA; border-color: #1B73CA; color: #ffffff; line-height: normal;"
-                                                                    target="_blank"><span
-                                                                    style="background-color: #1B73CA; border-color: #1B73CA; color: #ffffff; vertical-align: middle; line-height: normal;">Open the PDF ledger in Google Drive</span></a>
+                                                                    style="background-color: #1B73CA; border-color: #1B73CA; color: #ffffff; vertical-align: middle; line-height: normal;">Watch the video</span></a>
                                                             </td>
                                                         </tr>
                                                         </tbody>
@@ -343,14 +198,7 @@
                             <td class="content-block"
                                 style="font-family: Tahoma, Helvetica, sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; font-size: 12px; color: #999999; text-align: center;">
                                 <span class="apple-link" style="color: #999999; font-size: 12px; text-align: center;">This email was sent automatically by a computer program (<u><a
-                                        href="https://github.com/cmenon12/contemporary-choir" target="_blank">cmenon12/contemporary-choir</a></u>).<br>If you want to leave some feedback then please reply directly to it.</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="content-block powered-by"
-                                style="font-family: sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; font-size: 12px; color: #999999; text-align: center;">
-                                Powered by <a href="http://htmlemail.io"
-                                              style="color: #999999; font-size: 12px; text-align: center; text-decoration: none;">HTMLemail</a>.
+                                        href="https://github.com/cmenon12/birdbox-livestream" target="_blank">cmenon12/contemporary-choir</a></u>)</span>
                             </td>
                         </tr>
                     </table>
