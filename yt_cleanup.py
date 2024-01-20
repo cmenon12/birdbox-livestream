@@ -31,24 +31,27 @@ def update_weekly_playlists(yt: YouTube, start_date: datetime = None, end_date: 
     LOGGER.info("Updating playlists...")
     LOGGER.info(locals())
 
+    # Download all playlists
     playlists: List[YouTubePlaylist] = []
     next_page_token = ""
-
     while True:
         response = yt.execute_request(yt.get_service().playlists().list(
-            part="id,snippet",
+            part="id,snippet,status",
             mine=True,
             maxResults=50,
             pageToken=next_page_token
         ))
 
-        for playlist in response["items"]:
-            date = datetime.strptime(playlist["snippet"]["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
-            if (start_date and date < start_date) or (end_date and date > end_date):
-                continue
-            if ": w/c" in playlist["snippet"]["title"]:
-                playlists.append(playlist)
+        # Save the playlists we want to process
         LOGGER.debug("Found %s new playlists.", len(response["items"]))
+        for playlist in response["items"]:
+            if ": w/c" in playlist["snippet"]["title"]:
+                date = datetime.strptime(playlist["snippet"]["title"][-11:], "%d %b %Y")
+                if (start_date and date < start_date) or (end_date and date > end_date):
+                    continue
+                if not delete and playlist["status"]["privacyStatus"] == privacy:
+                    continue
+                playlists.append(playlist)
 
         try:
             next_page_token = response["nextPageToken"]
@@ -57,6 +60,7 @@ def update_weekly_playlists(yt: YouTube, start_date: datetime = None, end_date: 
 
     LOGGER.debug("Found %s playlists in total.", len(playlists))
 
+    # Ask the user to confirm
     titles = [playlist["snippet"]["title"] for playlist in playlists]
     print(
         f"Are you sure you want to {'delete' if delete else privacy} all these playlists?\n{json.dumps(titles, indent=4)}")
@@ -69,15 +73,17 @@ def update_weekly_playlists(yt: YouTube, start_date: datetime = None, end_date: 
 
     for playlist in playlists:
 
-        if delete:
+        if delete is True:
             r = yt.execute_request(yt.get_service().playlists().delete(
                 id=playlist["id"]
             ))
             LOGGER.debug("Deleted playlist %s %s.", playlist["id"], playlist["snippet"]["title"])
         else:
-            body = {"id": playlist["id"], "status": {"privacyStatus": "private"}}
-            r = yt.execute_request(yt.get_service().playlist().update(
-                part="id,status",
+            body = {"id": playlist["id"], "status": {"privacyStatus": "private"},
+                    "snippet": {"title": playlist["snippet"]["title"],
+                                "description": playlist["snippet"]["description"]}}
+            r = yt.execute_request(yt.get_service().playlists().update(
+                part="id,status,snippet",
                 body=body
             ))
             LOGGER.debug("Updated playlist %s %s.", playlist["id"], playlist["snippet"]["title"])
