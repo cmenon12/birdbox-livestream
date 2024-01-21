@@ -166,7 +166,7 @@ class YouTubeLivestream(google_services.YouTube):
             end_time.strftime("%Y-%m-%d %H:%M:%S %Z"))
 
         # Create a description
-        description = f"A livestream of the birdbox starting on {start_time.strftime('%a %d %b at %H.%M')}" \
+        description = f"A livestream of the birdbox starting on {start_time.strftime('%a %d %b %Y at %H.%M')}" \
                       f" and ending at {end_time.strftime('%H.%M')} ({str(TIMEZONE.zone)} timezone). "
 
         # Schedule a new broadcast
@@ -187,7 +187,7 @@ class YouTubeLivestream(google_services.YouTube):
                     "snippet": {
                         "scheduledStartTime": start_time.isoformat(),
                         "scheduledEndTime": end_time.isoformat(),
-                        "title": f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}",
+                        "title": f"Birdbox on {start_time.strftime('%a %d %b %Y at %H:%M')}",
                         "description": description},
                     "status": {
                         "privacyStatus": self.config["privacy_status"],
@@ -504,8 +504,8 @@ class YouTubeLivestream(google_services.YouTube):
         # Find and replace it, update it
         if "starting on" in description:
             old_start_time = description[40:59]
-            new_description = description.replace(old_start_time, start_time.strftime("%a %d %b at %H.%M"))
-            new_title = f"Birdbox on {start_time.strftime('%a %d %b at %H:%M')}"
+            new_description = description.replace(old_start_time, start_time.strftime("%a %d %b %Y at %H.%M"))
+            new_title = f"Birdbox on {start_time.strftime('%a %d %b %Y at %H:%M')}"
             self.update_video_metadata(video_id, title=new_title, description=new_description)
 
         # If asked then raise exception
