@@ -56,28 +56,15 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
 
     # Download all videos
     videos: List[YouTubeLiveBroadcast] = []
-    next_page_token = ""
-    while next_page_token is not None:
-        response = yt.execute_request(yt.get_service().liveBroadcasts().list(
-            part="id,snippet,status",
-            broadcastStatus="completed",
-            mine=True,
-            maxResults=50,
-            pageToken=next_page_token
-        ))
-
-        # Save the playlists we want to process
-        LOGGER.debug("Found %s new videos.", len(response["items"]))
-        for video in response["items"]:
-            if "(no motion)" in video["snippet"]["title"]:
-                date = datetime.strptime(video["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
-                if (start_date and date < start_date) or (end_date and date > end_date):
-                    continue
-                if not delete and video["status"]["privacyStatus"] == privacy:
-                    continue
-                videos.append(video)
-
-        next_page_token = response.get("nextPageToken")
+    all_videos = yt.list_all_broadcasts(part="id,snippet,status", lifecycle_status=["complete"])
+    for video in all_videos:
+        if "(no motion)" in video["snippet"]["title"]:
+            date = datetime.strptime(video["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
+            if (start_date and date < start_date) or (end_date and date > end_date):
+                continue
+            if video["status"]["privacyStatus"] == privacy:
+                continue
+            videos.append(video)
 
     LOGGER.debug("Found %s videos in total.", len(videos))
 

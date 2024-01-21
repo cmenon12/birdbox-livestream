@@ -52,46 +52,6 @@ MOTION_DETECTION_PARAMS = {
 }
 
 
-def get_complete_broadcasts(
-        service: googleapiclient.discovery.Resource) -> List[yt_types.YouTubeLiveBroadcast]:
-    """Get a list of all complete broadcasts.
-
-    :param service: the YouTube API service
-    :type service: googleapiclient.discovery.Resource
-    :return: a list of complete broadcasts
-    :rtype: yt_types.YouTubeLiveBroadcast
-    """
-
-    LOGGER.info("Fetching the complete broadcasts...")
-    next_page_token = ""
-    all_broadcasts = []
-    while next_page_token is not None:
-        response: yt_types.YouTubeLiveBroadcastList = yt_livestream.YouTubeLivestream.execute_request(
-            service.liveBroadcasts().list(
-                part="id,snippet,status",
-                mine=True,
-                maxResults=50,
-                pageToken=next_page_token))
-        LOGGER.debug("Response is: \n%s.", json.dumps(response, indent=4))
-        all_broadcasts.extend(response["items"])
-        next_page_token = response.get("nextPageToken")
-    LOGGER.debug(
-        "all_broadcasts is: \n%s.",
-        json.dumps(
-            all_broadcasts,
-            indent=4))
-
-    # Collate the complete broadcasts
-    complete_broadcasts = []
-    for item in all_broadcasts:
-        if item["status"]["lifeCycleStatus"] == "complete":
-            complete_broadcasts.append(item)
-    LOGGER.debug("complete_broadcasts is: %s.", complete_broadcasts)
-
-    LOGGER.info("Complete broadcasts fetched successfully!")
-    return complete_broadcasts
-
-
 def download_video(video_id: str) -> str:
     """Download the low-res YouTube video and return the filename.
 
@@ -351,7 +311,7 @@ def main():
     try:
 
         # Get initial access to the YouTube API
-        yt = google_services.YouTube(yt_config)
+        yt = yt_livestream.YouTubeLivestream(yt_config)
         yt.get_service()
 
         all_done = False
@@ -359,7 +319,7 @@ def main():
 
             # Find out which videos need processing
             new_ids = []
-            new_complete_broadcasts = get_complete_broadcasts(yt.get_service())
+            new_complete_broadcasts = yt.list_all_broadcasts(part="id,snippet,status", lifecycle_status=["complete"])
             for video in new_complete_broadcasts:
                 if "motion" not in video["snippet"]["description"].lower() and \
                         video["status"]["privacyStatus"] != "private":
