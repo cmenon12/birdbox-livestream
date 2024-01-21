@@ -26,6 +26,17 @@ TIMEZONE = timezone("Europe/London")
 LOG_FILENAME = f"birdbox-livestream-yt-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
 
 
+def ask_yes_or_no():
+    """Asks the user to confirm they want to continue."""
+
+    answer = input("y/n: ")
+    LOGGER.debug("User chose option %s.", answer)
+
+    if answer != "y":
+        LOGGER.debug("User chose not to continue, exiting.")
+        sys.exit()
+
+
 def update_no_motion_videos(yt: YouTubeLivestream, start_date: datetime = None, end_date: datetime = None,
                             delete: bool = False, privacy: str = "private"):
     LOGGER.info("Updating videos...")
@@ -62,12 +73,7 @@ def update_no_motion_videos(yt: YouTubeLivestream, start_date: datetime = None, 
     titles = [video["snippet"]["title"] for video in videos]
     print(
         f"Are you sure you want to {'delete' if delete else privacy} all these videos?\n{json.dumps(titles, indent=4)}")
-    answer = input("y/n: ")
-    LOGGER.info("User chose option %s.", answer)
-
-    if answer != "y":
-        LOGGER.info("User chose not to continue, exiting.")
-        sys.exit()
+    ask_yes_or_no()
 
     all_playlists = yt.list_all_playlists()
 
@@ -97,28 +103,16 @@ def update_weekly_playlists(yt: YouTubeLivestream, start_date: datetime = None, 
     LOGGER.info(locals())
 
     # Download all playlists
+    all_playlists = yt.list_all_playlists()
     playlists: List[YouTubePlaylist] = []
-    next_page_token = ""
-    while next_page_token is not None:
-        response = yt.execute_request(yt.get_service().playlists().list(
-            part="id,snippet,status",
-            mine=True,
-            maxResults=50,
-            pageToken=next_page_token
-        ))
-
-        # Save the playlists we want to process
-        LOGGER.debug("Found %s new playlists.", len(response["items"]))
-        for playlist in response["items"]:
-            if ": w/c" in playlist["snippet"]["title"]:
-                date = datetime.strptime(playlist["snippet"]["title"][-11:], "%d %b %Y")
-                if (start_date and date < start_date) or (end_date and date > end_date):
-                    continue
-                if not delete and playlist["status"]["privacyStatus"] == privacy:
-                    continue
-                playlists.append(playlist)
-
-        next_page_token = response.get("nextPageToken")
+    for playlist in all_playlists:
+        if ": w/c" in playlist["snippet"]["title"]:
+            date = datetime.strptime(playlist["snippet"]["title"][-11:], "%d %b %Y")
+            if (start_date and date < start_date) or (end_date and date > end_date):
+                continue
+            if not delete and playlist["status"]["privacyStatus"] == privacy:
+                continue
+            playlists.append(playlist)
 
     LOGGER.debug("Found %s playlists in total.", len(playlists))
 
@@ -126,12 +120,7 @@ def update_weekly_playlists(yt: YouTubeLivestream, start_date: datetime = None, 
     titles = [playlist["snippet"]["title"] for playlist in playlists]
     print(
         f"Are you sure you want to {'delete' if delete else privacy} all these playlists?\n{json.dumps(titles, indent=4)}")
-    answer = input("y/n: ")
-    LOGGER.info("User chose option %s.", answer)
-
-    if answer != "y":
-        LOGGER.info("User chose not to continue, exiting.")
-        sys.exit()
+    ask_yes_or_no()
 
     for playlist in playlists:
 
