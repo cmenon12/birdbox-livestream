@@ -137,9 +137,10 @@ videos/
 client_secret.json
 config.ini
 save_data.json
-*.pickle
 *.3gp
+*.avi
+*.log
 *.mp4
 *.part
-*.avi
+*.pickle
 *.ytdl
