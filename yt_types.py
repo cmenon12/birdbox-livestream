@@ -240,7 +240,7 @@ class YouTubeVideo(TypedDict, total=False):
     fileDetails: Dict[str, Union[str, int,
                                  List[Dict[str, Union[int, float, str]]]]]
     processingDetails: Dict[str, Union[str, Dict[str, int]]]
-    suggestions: Dict[str, Union[List[str], Dict[str, Union[str, List[str]]]]]
+    suggestions: Dict[str, Union[list[str], Dict[str, Union[str, List[str]]]]]
     liveStreamingDetails: Dict[str, Union[str, int]]
     localizations: Dict[str, Dict[str, str]]
 

@@ -15,7 +15,7 @@ import time
 import traceback
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 import googleapiclient
 from pytz import timezone
@@ -370,19 +370,19 @@ class YouTubeLivestream(google_services.YouTube):
             **self.live_broadcasts,
             **self.finished_broadcasts}
 
-    def list_all_broadcasts(self, part: str, lifecycle_status: list[str] = None, broadcast_id: list[str] = None) -> \
-            list[
+    def list_all_broadcasts(self, part: str, lifecycle_status: List[str] = None, broadcast_id: List[str] = None) -> \
+            List[
                 yt_types.YouTubeLiveBroadcast]:
         """Fetch and return all the user's broadcasts.
 
         :param part: the comma-separated properties to fetch
         :type part: str
         :param lifecycle_status: the lifecycle statuses of the broadcasts to fetch
-        :type lifecycle_status: list[str]
+        :type lifecycle_status: List[str]
         :param broadcast_id: a list of IDs to fetch
-        :type broadcast_id: list[str]
+        :type broadcast_id: List[str]
         :return: all the broadcasts
-        :rtype: list[yt_types.YouTubeLiveBroadcast]
+        :rtype: List[yt_types.YouTubeLiveBroadcast]
         """
 
         LOGGER.debug("Fetching all the broadcasts...")
@@ -619,7 +619,7 @@ class YouTubeLivestream(google_services.YouTube):
         return broadcasts[0]["status"]
 
     def delete_broadcast(self, video_id: str, start_time: datetime,
-                         all_playlists: list[yt_types.YouTubePlaylist] = None):
+                         all_playlists: List[yt_types.YouTubePlaylist] = None):
         """Delete a broadcast and remove it from its playlist."""
 
         LOGGER.info("Deleting broadcast %s...", video_id)
