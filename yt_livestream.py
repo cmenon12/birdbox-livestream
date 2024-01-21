@@ -402,6 +402,9 @@ class YouTubeLivestream(google_services.YouTube):
         LOGGER.debug("Broadcasts is: \n%s.",
                      json.dumps(all_broadcasts, indent=4))
 
+        # Reverse order, so they're oldest first
+        all_broadcasts.reverse()
+
         # Filter by lifecycle status
         valid_broadcasts = []
         for broadcast in all_broadcasts:
