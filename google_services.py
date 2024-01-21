@@ -254,7 +254,7 @@ class YouTube(GoogleService):
         """Fetch all the playlists.
 
         :return: the playlists
-        :rtype: list[yt_types.YouTubePlaylist]
+        :rtype: List[yt_types.YouTubePlaylist]
         """
 
         LOGGER.debug("Fetching all the playlists...")

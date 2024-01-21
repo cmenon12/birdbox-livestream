@@ -1,15 +1,16 @@
-<img align="left" width="65" height="65" src="/assets/logo.png">
+<img align="left" width="65" height="65" alt="Logo cartoon of birdbox with CCTV inside" src="/assets/logo.png">
 
 # birdbox-livestream
 
 This is a small collection of Python scripts designed for livestreaming a birdbox from a Raspberry Pi to YouTube!
 
-### **[Check out the channel on YouTube!](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)** (unfortunately no birds showed up 😢)
+### **[Check out the channel on YouTube!](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)
 
-[<img src="/assets/my-birdbox.png" alt="" width="500" />](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)
+** (unfortunately no birds have shown up yet 😢)
+
+[<img src="/assets/my-birdbox.png" alt="Photo of wooden birdbox on a red brick wall with a CCTV warning on the side" width="500" />](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)
 
 [![GitHub license](https://img.shields.io/github/license/cmenon12/birdbox-livestream?style=flat)](https://github.com/cmenon12/birdbox-livestream/blob/master/LICENSE)
-
 
 ## The Python Scripts
 
@@ -34,6 +35,12 @@ for regularly) it's downloaded in 144p, motion detection is run on it, and the r
 description. If any motion is detected, the timestamps are added to the description and emailed to the user.
 
 This script relies on `yt_livestream.py` for connecting to the YouTube API and sending error emails.
+
+#### [`yt_cleanup.py`](yt_cleanup.py)
+
+This script is used to clean up old videos and weekly playlists, either by deleting them or making them private. It can
+clean up a subset of them between two specified dates. Be careful not to exceed
+the [daily YouTube API quota](https://developers.google.com/youtube/v3/getting-started#quota) using this tool.
 
 #### [`reauth_token.py`](reauth_token.py)
 
