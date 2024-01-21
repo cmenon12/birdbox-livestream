@@ -31,10 +31,11 @@
   ],
   "platformCommit": true,
   "schedule": "after 4pm on Friday",
+  "automergeType": "branch",
+  "ignoreTests": true,
   "patch": {
     "groupName": "all patch updates",
     "automerge": true,
-    "ignoreTests": true,
     "schedule": "after 4pm",
     "description": "Group and automerge all patch updates together every day at 4pm"
   },
@@ -52,7 +53,6 @@
       "matchUpdateTypes": ["minor"],
       "dependencyDashboardApproval": false,
       "automerge": true,
-      "ignoreTests": true,
       "schedule": "after 4pm",
       "description": "Automerge minor updates for this package every day at 4pm"
     }
