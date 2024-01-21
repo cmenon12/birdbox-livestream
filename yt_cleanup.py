@@ -37,8 +37,20 @@ def ask_yes_or_no():
         sys.exit()
 
 
-def update_no_motion_videos(yt: YouTubeLivestream, start_date: datetime = None, end_date: datetime = None,
-                            delete: bool = False, privacy: str = "private"):
+def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
+                            start_date: datetime = None, end_date: datetime = None):
+    """Delete or update the privacy of the specified weekly playlists.
+
+    :param yt: the YouTube Livestream object
+    :type yt: YouTubeLivestream
+    :param start_date: the start date for videos
+    :type start_date: datetime
+    :param end_date: the end date for videos
+    :type end_date: datetime
+    :param privacy: the privacy status to set
+    :type privacy: str
+    """
+
     LOGGER.info("Updating videos...")
     LOGGER.info(locals())
 
@@ -72,14 +84,14 @@ def update_no_motion_videos(yt: YouTubeLivestream, start_date: datetime = None, 
     # Ask the user to confirm
     titles = [video["snippet"]["title"] for video in videos]
     print(
-        f"Are you sure you want to {'delete' if delete else privacy} all these videos?\n{json.dumps(titles, indent=4)}")
+        f"Are you sure you want to {privacy.upper()} all these videos?\n{json.dumps(titles, indent=4)}")
     ask_yes_or_no()
 
     all_playlists = yt.list_all_playlists()
 
     for video in videos:
 
-        if delete is True:
+        if privacy == "delete":
             start_time = datetime.strptime(video["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
             yt.delete_broadcast(video["id"], start_time, all_playlists)
             r = yt.execute_request(yt.get_service().videos().delete(
@@ -97,8 +109,20 @@ def update_no_motion_videos(yt: YouTubeLivestream, start_date: datetime = None, 
     LOGGER.info("Updated the videos successfully!")
 
 
-def update_weekly_playlists(yt: YouTubeLivestream, start_date: datetime = None, end_date: datetime = None,
-                            delete: bool = False, privacy: str = "private"):
+def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
+                            start_date: datetime = None, end_date: datetime = None):
+    """Delete or update the privacy of the specified weekly playlists.
+
+    :param yt: the YouTube Livestream object
+    :type yt: YouTubeLivestream
+    :param start_date: the start date for playlists
+    :type start_date: datetime
+    :param end_date: the end date for playlists
+    :type end_date: datetime
+    :param privacy: the privacy status to set
+    :type privacy: str
+    """
+
     LOGGER.info("Updating playlists...")
     LOGGER.info(locals())
 
@@ -110,7 +134,7 @@ def update_weekly_playlists(yt: YouTubeLivestream, start_date: datetime = None, 
             date = datetime.strptime(playlist["snippet"]["title"][-11:], "%d %b %Y")
             if (start_date and date < start_date) or (end_date and date > end_date):
                 continue
-            if not delete and playlist["status"]["privacyStatus"] == privacy:
+            if playlist["status"]["privacyStatus"] == privacy:
                 continue
             playlists.append(playlist)
 
@@ -119,12 +143,12 @@ def update_weekly_playlists(yt: YouTubeLivestream, start_date: datetime = None, 
     # Ask the user to confirm
     titles = [playlist["snippet"]["title"] for playlist in playlists]
     print(
-        f"Are you sure you want to {'delete' if delete else privacy} all these playlists?\n{json.dumps(titles, indent=4)}")
+        f"Are you sure you want to {privacy.upper()} all these playlists?\n{json.dumps(titles, indent=4)}")
     ask_yes_or_no()
 
     for playlist in playlists:
 
-        if delete is True:
+        if privacy == "delete":
             r = yt.execute_request(yt.get_service().playlists().delete(
                 id=playlist["id"]
             ))
@@ -143,6 +167,8 @@ def update_weekly_playlists(yt: YouTubeLivestream, start_date: datetime = None, 
 
 
 def main():
+    """Run the script prompting the user to select an option."""
+
     # Get the config
     parser = utilities.load_config(CONFIG_FILENAME)
     yt_config: configparser.SectionProxy = parser["YouTubeLivestream"]
@@ -162,14 +188,13 @@ def main():
     end_date = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
 
     if option == "make weekly playlists private":
-        update_weekly_playlists(yt, start_date, end_date, delete=False, privacy="private")
+        update_weekly_playlists(yt, "private", start_date, end_date)
     elif option == "delete weekly playlists":
-        update_weekly_playlists(yt, start_date, end_date, delete=True)
+        update_weekly_playlists(yt, "delete", start_date, end_date)
     elif option == "make no motion videos private":
-        update_no_motion_videos(yt, start_date, end_date, delete=False, privacy="private")
+        update_no_motion_videos(yt, "private", start_date, end_date)
     elif option == "delete no motion videos":
-        update_no_motion_videos(yt, start_date, end_date, delete=True)
-
+        update_no_motion_videos(yt, "delete", start_date, end_date)
 
 
 if __name__ == "__main__":
