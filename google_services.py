@@ -246,9 +246,9 @@ class YouTube(GoogleService):
     :type config: configparser.SectionProxy
     """
 
-    def __init__(self, config: configparser.SectionProxy):
+    def __init__(self, config: configparser.SectionProxy, token_file: Optional[str] = None):
 
-        super().__init__(config, "youtube", "v3", ["https://www.googleapis.com/auth/youtube"])
+        super().__init__(config, "youtube", "v3", ["https://www.googleapis.com/auth/youtube"], token_file)
 
     def list_all_playlists(self) -> List[yt_types.YouTubePlaylist]:
         """Fetch all the playlists.
