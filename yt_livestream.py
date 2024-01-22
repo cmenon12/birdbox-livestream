@@ -473,66 +473,29 @@ class YouTubeLivestream(google_services.YouTube):
 
         LOGGER.info("Video metadata updated successfully!")
 
-    def update_video_start_time(self, video_id: str,
-                                start_time: Optional[datetime] = None,
-                                fail_silently: bool = True) -> None:
-        """Update the video start time, leaving everything else in place.
+    def update_video_times(self, video_id: str,
+                           start_time: Optional[datetime] = None,
+                           end_time: Optional[datetime] = None,
+                           fail_silently: bool = True):
+        """Update the video start and/or times, leaving everything else in place.
 
         :param video_id: the ID of the video to update
         :type video_id: str
-        :param start_time: the new start time, otherwise now
+        :param start_time: the new start time
         :type start_time: Optional[datetime]
-        :param fail_silently: whether to skip quietly if it can't be replaced
-        :type fail_silently: bool
-        """
-
-        LOGGER.info("Updating the video start time...")
-        LOGGER.info(locals())
-
-        # Use now if not specified
-        if not start_time:
-            start_time = datetime.now(tz=TIMEZONE)
-
-        # Get the existing description
-        video = self.execute_request(self.get_service().videos().list(
-            id=video_id,
-            part="id,snippet"
-        ))
-        LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
-        description: str = video["items"][0]["snippet"]["description"]
-
-        # Find and replace it, update it
-        if "starting on" in description:
-            old_start_time = description[40:64]
-            new_description = description.replace(old_start_time, start_time.strftime("%a %d %b %Y at %H.%M"))
-            new_title = f"Birdbox on {start_time.strftime('%a %d %b %Y at %H:%M')}"
-            self.update_video_metadata(video_id, title=new_title, description=new_description)
-
-        # If asked then raise exception
-        elif fail_silently is False:
-            raise RuntimeError("Could not update start time!")
-
-        LOGGER.info("Video start time updated successfully!\n")
-
-    def update_video_end_time(self, video_id: str,
-                              end_time: Optional[datetime] = None,
-                              fail_silently: bool = True) -> None:
-        """Set the video end time, leaving everything else in place.
-
-        :param video_id: the ID of the video to update
-        :type video_id: str
-        :param end_time: the new end time, otherwise now
+        :param end_time: the new end time
         :type end_time: Optional[datetime]
-        :param fail_silently: whether to skip quietly if it can't be replaced
+        :param fail_silently: whether to skip quietly if they can't be replaced
         :type fail_silently: bool
         """
 
-        LOGGER.info("Updating the video end time...")
+        LOGGER.info("Updating the video times...")
         LOGGER.info(locals())
 
-        # Use now if not specified
-        if not end_time:
-            end_time = datetime.now(tz=TIMEZONE)
+        # Edge case where both are None
+        if start_time is None and end_time is None:
+            LOGGER.info("Both start and end time are None, skipping.")
+            return
 
         # Get the existing description
         video = self.execute_request(self.get_service().videos().list(
@@ -542,18 +505,34 @@ class YouTubeLivestream(google_services.YouTube):
         LOGGER.debug("Video is: \n%s.", json.dumps(video, indent=4))
         description: str = video["items"][0]["snippet"]["description"]
 
-        # Find and replace it, update it
-        if "ending at" in description:
-            old_end_time = description[79:84]
-            new_description = description.replace(old_end_time,
-                                                  end_time.strftime("%H.%M"))
-            self.update_video_metadata(video_id, description=new_description)
+        # Find and update the start time
+        if start_time is not None:
+            if "starting on" in description:
+                old_start_time = description[40:64]
+                new_description = description.replace(old_start_time, start_time.strftime("%a %d %b %Y at %H.%M"))
+                LOGGER.debug("New description is: %s.", new_description)
+                new_title = f"Birdbox on {start_time.strftime('%a %d %b %Y at %H:%M')}"
+                self.update_video_metadata(video_id, title=new_title, description=new_description)
 
-        # If asked then raise exception
-        elif fail_silently is False:
-            raise RuntimeError("Could not update end time!")
+            # If asked then raise exception
+            elif fail_silently is False:
+                raise RuntimeError("Could not update start time!")
 
-        LOGGER.info("Video end time updated successfully!\n")
+        # Find and update the end time
+        if end_time is not None:
+            if "ending at" in description:
+                old_end_time = description[79:84]
+                new_description = description.replace(old_end_time,
+                                                      end_time.strftime("%H.%M"))
+                LOGGER.debug("New description is: %s.", new_description)
+                self.update_video_metadata(video_id, description=new_description)
+
+            # If asked then raise exception
+            elif fail_silently is False:
+                raise RuntimeError("Could not update end time!")
+
+        LOGGER.info("Video times updated successfully!\n")
+
 
     def add_to_week_playlist(
             self,
@@ -707,7 +686,7 @@ def process_broadcasts(now: datetime, yt: YouTubeLivestream, pause_time: int = 5
                 time.sleep(20)
 
             # Update the start time
-            yt.update_video_start_time(scheduled[start_time]["id"])
+            yt.update_video_times(scheduled[start_time]["id"], start_time=datetime.now(tz=TIMEZONE))
 
     time.sleep(pause_time)
 
@@ -718,7 +697,7 @@ def process_broadcasts(now: datetime, yt: YouTubeLivestream, pause_time: int = 5
                 "Z", "+00:00"))
         if end_time <= now:
             yt.end_broadcast(start_time)
-            yt.update_video_end_time(live[start_time]["id"])
+            yt.update_video_times(live[start_time]["id"], end_time=datetime.now(tz=TIMEZONE))
 
     time.sleep(pause_time)
 
