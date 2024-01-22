@@ -654,7 +654,7 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Get all upcoming broadcasts
         LOGGER.debug("Fetching all the upcoming broadcasts...")
-        all_broadcasts = self.list_all_broadcasts(part="id,snippet", lifecycle_status=["created", "ready"])
+        all_broadcasts = self.list_all_broadcasts(part="id,snippet,status", lifecycle_status=["created", "ready"])
 
         # Stop if there are no upcoming broadcasts
         if len(all_broadcasts) == 0:
