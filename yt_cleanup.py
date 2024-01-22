@@ -81,13 +81,13 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
         if privacy == "delete":
             start_time = datetime.strptime(video["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
             yt.delete_broadcast(video["id"], start_time, all_playlists)
-            r = yt.execute_request(yt.get_service().videos().delete(
+            yt.execute_request(yt.get_service().videos().delete(
                 id=video["id"]
             ))
             LOGGER.debug("Deleted video %s %s.", video["id"], video["snippet"]["title"])
         else:
             body = {"id": video["id"], "status": {"privacyStatus": "private"}}
-            r = yt.execute_request(yt.get_service().videos().update(
+            yt.execute_request(yt.get_service().videos().update(
                 part="id,status",
                 body=body
             ))
@@ -136,7 +136,7 @@ def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
     for playlist in playlists:
 
         if privacy == "delete":
-            r = yt.execute_request(yt.get_service().playlists().delete(
+            yt.execute_request(yt.get_service().playlists().delete(
                 id=playlist["id"]
             ))
             LOGGER.debug("Deleted playlist %s %s.", playlist["id"], playlist["snippet"]["title"])
@@ -144,7 +144,7 @@ def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
             body = {"id": playlist["id"], "status": {"privacyStatus": "private"},
                     "snippet": {"title": playlist["snippet"]["title"],
                                 "description": playlist["snippet"]["description"]}}
-            r = yt.execute_request(yt.get_service().playlists().update(
+            yt.execute_request(yt.get_service().playlists().update(
                 part="id,status,snippet",
                 body=body
             ))

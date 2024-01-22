@@ -740,7 +740,7 @@ def main():
                 try:
                     yt.get_stream_status()
                     time.sleep(60)
-                except Exception as error:
+                except Exception:  # pylint: disable=broad-exception-caught
                     LOGGER.error("\n\n")
                     LOGGER.exception(
                         "There was an exception logging the stream status, but we'll carry on anyway.")
@@ -749,7 +749,7 @@ def main():
     except Exception as error:
         LOGGER.exception("\n\nThere was an exception!!")
         utilities.send_error_email(email_config, traceback.format_exc(), LOG_FILENAME)
-        raise Exception from error
+        raise Exception from error  # pylint: disable=broad-exception-raised
 
 
 if __name__ == "__main__":

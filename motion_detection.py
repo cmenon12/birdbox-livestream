@@ -19,7 +19,6 @@ import html2text
 import humanize
 import send2trash
 import yt_dlp
-from googleapiclient.discovery import build
 from jinja2 import Template
 from pytz import timezone
 
@@ -89,7 +88,6 @@ def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
 
     LOGGER.info("Detecting motion...")
     LOGGER.info(locals())
-    output = ""
     scan = dvr_scan.scanner.ScanContext([filename])
     scan.set_event_params(
         min_event_len=MOTION_DETECTION_PARAMS["min_event_len"],
@@ -196,7 +194,7 @@ def send_motion_email(
     message["Message-ID"] = email_id
 
     # Render the template
-    with open("motion-email-template.html") as file:
+    with open("motion-email-template.html", encoding="ut-8") as file:
         template = Template(file.read())
         html = template.render(motion_timestamps=motion,
                                motion_params=MOTION_DETECTION_PARAMS,
@@ -239,6 +237,7 @@ def process_video(video_id: str, yt: google_services.YouTube,
     :type email_config: configparser.SectionProxy
     """
 
+    # pylint: disable=used-before-assignment
     print(f"{'Downloading' if args.download_only else 'Processing'} {video_id}...")
 
     # Try to download the video, but just skip for now if it fails
@@ -347,7 +346,7 @@ def main():
         LOGGER.debug("Changed working directory to %s.", os.getcwd())
         utilities.send_error_email(
             email_config, traceback.format_exc(), LOG_FILENAME)
-        raise Exception from error
+        raise Exception from error  # pylint: disable=broad-exception-raised
 
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ def load_config(filename: str) -> configparser.ConfigParser():
 
     # Check that the config file exists
     try:
-        open(filename)
+        open(filename)  # pylint: disable=unspecified-encoding
         LOGGER.info("Loaded config %s.", filename)
     except FileNotFoundError as error:
         print("The config file doesn't exist!")
@@ -112,7 +112,7 @@ def send_error_email(config: configparser.SectionProxy, trace: str,
 
     # Attach the log
     part = MIMEBase("text", "plain")
-    part.set_payload(open(f"./logs/{filename}", "r").read())
+    part.set_payload(open(f"./logs/{filename}", "r").read())  # pylint: disable=unspecified-encoding
     encoders.encode_base64(part)
     part.add_header("Content-Disposition",
                     f"attachment; filename=\"{filename}\"")
