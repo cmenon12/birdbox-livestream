@@ -503,7 +503,7 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Find and replace it, update it
         if "starting on" in description:
-            old_start_time = description[40:59]
+            old_start_time = description[40:64]
             new_description = description.replace(old_start_time, start_time.strftime("%a %d %b %Y at %H.%M"))
             new_title = f"Birdbox on {start_time.strftime('%a %d %b %Y at %H:%M')}"
             self.update_video_metadata(video_id, title=new_title, description=new_description)
@@ -544,7 +544,7 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Find and replace it, update it
         if "ending at" in description:
-            old_end_time = description[74:79]
+            old_end_time = description[79:84]
             new_description = description.replace(old_end_time,
                                                   end_time.strftime("%H.%M"))
             self.update_video_metadata(video_id, description=new_description)
