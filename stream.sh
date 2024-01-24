@@ -30,7 +30,6 @@ do
   # -map use the audio from the first input
   # -vcodec use the same video codec as the input
   # -acodec use the same audio codec as the input
-  # -g set the group of picture size
   # -strict how strictly to conform to the codecs
   # -f set format
   # -b set the video bitrate
