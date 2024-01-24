@@ -20,7 +20,7 @@ do
   # -ae set annotate text size, text colour, and background colour
   # -ISO set capture ISO
   # -b set bitrate in bits per second
-  raspivid -t 0 -w 1280 -h 720 -fps 25 -n -br 60 -co 10 -sh 70 -sa -100 -l -o - -a 1036 -a "%a %d %b %Y at %H:%M:%S %Z" -ae 18,0xff,0x808000 -ISO 600 -b 4500000 |
+  raspivid -t 0 -w 1280 -h 720 -fps 25 -n -br 60 -co 10 -sh 70 -sa -100 -l -o - -a 1036 -a "%a %d %b %Y at %H:%M:%S %Z" -ae 18,0xff,0x808000 -ISO 600 -b 4200000 |
 
   # -re read input at the native framerate
   # -stream_loop loop input indefinitely
@@ -30,17 +30,16 @@ do
   # -map use the audio from the first input
   # -vcodec use the same video codec as the input
   # -acodec use the same audio codec as the input
-  # -ab
   # -g set the group of picture size
-  # -strict should change to normal
+  # -strict how strictly to conform to the codecs
   # -f set format
   # -b set the video bitrate
   # -b set the audio bitrate
   # -maxrate set the maximum bitrate
-  # -preset
+  # -preset compression to encoding speed ration, faster=CPU keeps up better
   # the url variable
   # -report dump to a log file
-  ffmpeg -re -stream_loop -1 -i ./music/all-variable-120-mono.mp3 -i - -map 1:v -map 0:a -vcodec copy -acodec copy -ab 128k -g 50 -strict experimental -f flv -b:v 4500k -b:a 40k -maxrate 4540k -preset veryfast $url -report
+  ffmpeg -re -stream_loop -1 -i ./music/all-variable-120-mono.mp3 -i - -map 1:v -map 0:a -vcodec copy -acodec copy -strict normal -f flv -b:v 4200k -b:a 40k -maxrate 4240k -preset ultrafast $url -report
 
   sleep 30
 done
