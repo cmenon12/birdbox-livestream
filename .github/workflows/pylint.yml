@@ -1,19 +1,14 @@
 name: Pylint
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [push, pull_request]
 
 jobs:
   build:
     name: Analyse-Pylint
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft != true
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.8
         uses: actions/setup-python@v5
         with:
           python-version: 3.8
