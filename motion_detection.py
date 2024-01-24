@@ -194,7 +194,7 @@ def send_motion_email(
     message["Message-ID"] = email_id
 
     # Render the template
-    with open("motion-email-template.html", encoding="ut-8") as file:
+    with open("motion-email-template.html", encoding="utf-8") as file:
         template = Template(file.read())
         html = template.render(motion_timestamps=motion,
                                motion_params=MOTION_DETECTION_PARAMS,
