@@ -370,15 +370,14 @@ class YouTubeLivestream(google_services.YouTube):
             **self.live_broadcasts,
             **self.finished_broadcasts}
 
-    def list_all_broadcasts(self, part: str, lifecycle_status: List[str] = None, broadcast_id: List[str] = None) -> \
-            List[
-                yt_types.YouTubeLiveBroadcast]:
+    def list_all_broadcasts(self, part: str, broadcast_status: str = None,
+                            broadcast_id: List[str] = None) -> List[yt_types.YouTubeLiveBroadcast]:
         """Fetch and return all the user's broadcasts.
 
         :param part: the comma-separated properties to fetch
         :type part: str
-        :param lifecycle_status: the lifecycle statuses of the broadcasts to fetch
-        :type lifecycle_status: List[str]
+        :param broadcast_status: the broadcast status of the broadcasts to fetch
+        :type broadcast_status: str
         :param broadcast_id: a list of IDs to fetch
         :type broadcast_id: List[str]
         :return: all the broadcasts
@@ -389,12 +388,26 @@ class YouTubeLivestream(google_services.YouTube):
         next_page_token = ""
         all_broadcasts = []
         while next_page_token is not None:
-            response: yt_types.YouTubeLiveBroadcastList = self.execute_request(
-                self.get_service().liveBroadcasts().list(
-                    part=part,
-                    mine=True,
-                    maxResults=50,
-                    pageToken=next_page_token))
+            if broadcast_id:
+                response: yt_types.YouTubeLiveBroadcastList = self.execute_request(
+                    self.get_service().liveBroadcasts().list(
+                        part=part,
+                        id=",".join(broadcast_id),
+                        maxResults=50,
+                        pageToken=next_page_token))
+            elif broadcast_status:
+                response: yt_types.YouTubeLiveBroadcastList = self.execute_request(
+                    self.get_service().liveBroadcasts().list(
+                        part=part,
+                        broadcastStatus=broadcast_status,
+                        maxResults=50,
+                        pageToken=next_page_token))
+            else:
+                response: yt_types.YouTubeLiveBroadcastList = self.execute_request(
+                    self.get_service().liveBroadcasts().list(
+                        part=part,
+                        maxResults=50,
+                        pageToken=next_page_token))
             LOGGER.debug("Response is: \n%s.",
                          json.dumps(response, indent=4))
             all_broadcasts.extend(response["items"])
@@ -407,8 +420,16 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Filter by lifecycle status
         valid_broadcasts = []
+        status_mappings = {
+            "active": ["live", "testing"],
+            "all": ["live", "liveStarting", "testStarting", "testing", "complete", "revoked",
+                    "created", "ready"],
+            "completed": ["complete", "revoked"],
+            "upcoming": ["created", "liveStarting", "ready", "testStarting"]
+        }
         for broadcast in all_broadcasts:
-            if lifecycle_status and broadcast["status"]["lifeCycleStatus"] not in lifecycle_status:
+            if broadcast_status and broadcast["status"]["lifeCycleStatus"] not in status_mappings[
+                broadcast_status]:
                 continue
             if broadcast_id and broadcast["id"] not in broadcast_id:
                 continue
@@ -633,7 +654,8 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Get all upcoming broadcasts
         LOGGER.debug("Fetching all the upcoming broadcasts...")
-        all_broadcasts = self.list_all_broadcasts(part="id,snippet,status", lifecycle_status=["created", "ready"])
+        all_broadcasts = self.list_all_broadcasts(part="id,snippet,status",
+                                                  broadcast_status="upcoming")
 
         # Stop if there are no upcoming broadcasts
         if len(all_broadcasts) == 0:

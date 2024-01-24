@@ -318,7 +318,8 @@ def main():
 
             # Find out which videos need processing
             new_ids = []
-            new_complete_broadcasts = yt.list_all_broadcasts(part="id,snippet,status", lifecycle_status=["complete"])
+            new_complete_broadcasts = yt.list_all_broadcasts(part="id,snippet,status",
+                                                             broadcast_status="completed")
             for video in new_complete_broadcasts:
                 if "motion" not in video["snippet"]["description"].lower() and \
                         video["status"]["privacyStatus"] != "private":
