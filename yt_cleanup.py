@@ -56,7 +56,7 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
 
     # Download all videos
     videos: List[YouTubeLiveBroadcast] = []
-    all_videos = yt.list_all_broadcasts(part="id,snippet,status", lifecycle_status=["complete"])
+    all_videos = yt.list_all_broadcasts(part="id,snippet,status", broadcast_status="completed")
     for video in all_videos:
         if "(no motion)" in video["snippet"]["title"]:
             date = datetime.strptime(video["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
