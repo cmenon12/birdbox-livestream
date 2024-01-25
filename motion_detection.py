@@ -258,11 +258,11 @@ def process_video(video_id: str, yt: google_services.YouTube,
         LOGGER.debug("Changed working directory to %s.", os.getcwd())
 
         # Record no motion if the recording is unavailable
-        if "This live stream recording is not available." in error.msg:
+        if "This live stream recording is not available." in error.msg or "This live event has ended." in error.msg:
             update_motion_status(yt.get_service(), video_id,
                                  {"suffix": "(no motion)",
                                   "description": "No motion was detected in this video as the recording is not available 😢."})
-            print("Marked the video as having no motion.")
+            print("Marked the video as having no motion.\n")
 
         return
 
