@@ -168,7 +168,7 @@ class GoogleService:
             try:
                 response = request.execute()
                 return response
-            except (BrokenPipeError, IOError) as error:
+            except (BrokenPipeError, IOError, googleapiclient.errors.HttpError) as error:
                 LOGGER.exception(
                     "There was an error with executing the request!")
                 count += 1
