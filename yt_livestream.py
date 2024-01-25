@@ -744,7 +744,7 @@ def main():
         LOGGER.debug("Waiting for the stream status to be active...")
         stream_status = yt.get_stream_status()
         while stream_status["streamStatus"] != "active":
-            print(f"Waiting because the stream status is: {stream_status}.")
+            print(f"Waiting because the stream status is:\n{stream_status}.")
             time.sleep(5)
             stream_status = yt.get_stream_status()
         print(f"Stream status is: {stream_status}.")
