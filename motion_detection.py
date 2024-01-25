@@ -171,7 +171,8 @@ def update_motion_status(
 def send_motion_email(
         config: configparser.SectionProxy,
         video_id: str,
-        motion: List[Dict[str, str]]) -> None:
+        motion: List[Dict[str, str]],
+        motion_playlist_id: str) -> None:
     """Send an email about the motion that was detected.
 
     :param config: the config to use
@@ -180,6 +181,8 @@ def send_motion_email(
     :type video_id: str
     :param motion: a list of the motion events detected
     :type motion: List[Dict[str, str]]
+    :param motion_playlist_id: the ID of the motion playlist
+    :type motion_playlist_id: str
     """
 
     LOGGER.info("Sending the motion email...")
@@ -198,7 +201,8 @@ def send_motion_email(
         template = Template(file.read())
         html = template.render(motion_timestamps=motion,
                                motion_params=MOTION_DETECTION_PARAMS,
-                               video_url=f"https://youtu.be/{video_id}")
+                               video_url=f"https://youtu.be/{video_id}",
+                               motion_playlist_url=f"https://www.youtube.com/playlist?list={motion_playlist_id}")
 
         # Create the plain-text version of the message
         text_maker = html2text.HTML2Text()
@@ -279,7 +283,7 @@ def process_video(video_id: str, yt: google_services.YouTube,
         update_motion_status(
             yt.get_service(), video_id, motion)
         if len(motion) > 0:
-            send_motion_email(email_config, video_id, motion)
+            send_motion_email(email_config, video_id, motion, yt_config["motion_playlist_id"])
             yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
         else:
             try:
