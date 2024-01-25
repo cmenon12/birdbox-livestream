@@ -32,7 +32,6 @@
   "platformCommit": true,
   "schedule": "after 4pm on Friday",
   "automergeType": "branch",
-  "ignoreTests": true,
   "patch": {
     "groupName": "all patch updates",
     "automerge": true,
