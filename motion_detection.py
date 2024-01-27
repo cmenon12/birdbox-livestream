@@ -13,7 +13,7 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import List, Dict, Union
 
-import dvr_scan
+import dvr_scan.scanner as dvr_scanner
 import googleapiclient
 import html2text
 import humanize
@@ -88,21 +88,23 @@ def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
 
     LOGGER.info("Detecting motion...")
     LOGGER.info(locals())
-    scan = dvr_scan.scanner.ScanContext([filename])
+    scan = dvr_scanner.MotionScanner([filename], show_progress=True)
     scan.set_event_params(
         min_event_len=MOTION_DETECTION_PARAMS["min_event_len"],
         time_pre_event=MOTION_DETECTION_PARAMS["time_pre_event"],
         time_post_event=MOTION_DETECTION_PARAMS["time_post_event"]
     )
     scan.set_detection_params(
-        roi=MOTION_DETECTION_PARAMS["roi"],
         threshold=MOTION_DETECTION_PARAMS["threshold"]
     )
-    motion = scan.scan_motion()
+    scan.set_regions(
+        roi_deprecated=MOTION_DETECTION_PARAMS["roi"]
+    )
+    motion = scan.scan().event_list
     result = []
     for event in motion:
-        result.append({"start": event[0].get_timecode(0),
-                       "duration": int(event[1].get_seconds() - event[0].get_seconds())})
+        result.append({"start": event.start.get_timecode(0),
+                       "duration": int(event.end.get_seconds() - event.start.get_seconds())})
 
     LOGGER.debug("Motion result is: \n%s.", json.dumps(result, indent=4))
 
@@ -189,7 +191,8 @@ def send_motion_email(
 
     # Create the message
     message = MIMEMultipart("alternative")
-    message["Subject"] = f"Motion detected in the birdbox ({len(motion)} event{'s' if len(motion) > 1 else ''})"
+    message[
+        "Subject"] = f"Motion detected in the birdbox ({len(motion)} event{'s' if len(motion) > 1 else ''})"
     message["To"] = config["to"]
     message["From"] = config["from"]
     message["Date"] = email.utils.formatdate()
