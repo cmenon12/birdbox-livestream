@@ -13,12 +13,13 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import List, Dict, Union
 
-import dvr_scan
+import dvr_scan.scanner as dvr_scanner
 import googleapiclient
 import html2text
 import humanize
 import send2trash
 import yt_dlp
+from dvr_scan.region import Point
 from jinja2 import Template
 from pytz import timezone
 
@@ -45,8 +46,8 @@ MOTION_DETECTION_PARAMS = {
     "min_event_len": 30 * 3,
     "time_pre_event": "0s",
     "time_post_event": "0s",
-    "roi": [33, 37, 145, 84],
-    # Rectangle of form [x y w h] representing bounding box of subset of each frame to look at
+    # List of regions of interest (ROI) to scan for motion
+    "regions": [[Point(33, 37), Point(178, 37), Point(178, 121), Point(33, 121)]],
     "threshold": 0.5  # the threshold for motion 0 < t < 1, default 0.15
 }
 
@@ -88,21 +89,23 @@ def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
 
     LOGGER.info("Detecting motion...")
     LOGGER.info(locals())
-    scan = dvr_scan.scanner.ScanContext([filename])
+    scan = dvr_scanner.MotionScanner([filename], show_progress=True)
     scan.set_event_params(
         min_event_len=MOTION_DETECTION_PARAMS["min_event_len"],
         time_pre_event=MOTION_DETECTION_PARAMS["time_pre_event"],
         time_post_event=MOTION_DETECTION_PARAMS["time_post_event"]
     )
     scan.set_detection_params(
-        roi=MOTION_DETECTION_PARAMS["roi"],
         threshold=MOTION_DETECTION_PARAMS["threshold"]
     )
-    motion = scan.scan_motion()
+    scan.set_regions(
+        regions=MOTION_DETECTION_PARAMS["regions"]
+    )
+    motion = scan.scan().event_list
     result = []
     for event in motion:
-        result.append({"start": event[0].get_timecode(0),
-                       "duration": int(event[1].get_seconds() - event[0].get_seconds())})
+        result.append({"start": event.start.get_timecode(0),
+                       "duration": int(event.end.get_seconds() - event.start.get_seconds())})
 
     LOGGER.debug("Motion result is: \n%s.", json.dumps(result, indent=4))
 
@@ -171,7 +174,8 @@ def update_motion_status(
 def send_motion_email(
         config: configparser.SectionProxy,
         video_id: str,
-        motion: List[Dict[str, str]]) -> None:
+        motion: List[Dict[str, str]],
+        motion_playlist_id: str) -> None:
     """Send an email about the motion that was detected.
 
     :param config: the config to use
@@ -180,13 +184,16 @@ def send_motion_email(
     :type video_id: str
     :param motion: a list of the motion events detected
     :type motion: List[Dict[str, str]]
+    :param motion_playlist_id: the ID of the motion playlist
+    :type motion_playlist_id: str
     """
 
     LOGGER.info("Sending the motion email...")
 
     # Create the message
     message = MIMEMultipart("alternative")
-    message["Subject"] = f"Motion detected in the birdbox ({len(motion)} event{'s' if len(motion) > 1 else ''})"
+    message[
+        "Subject"] = f"Motion detected in the birdbox ({len(motion)} event{'s' if len(motion) > 1 else ''})"
     message["To"] = config["to"]
     message["From"] = config["from"]
     message["Date"] = email.utils.formatdate()
@@ -198,7 +205,8 @@ def send_motion_email(
         template = Template(file.read())
         html = template.render(motion_timestamps=motion,
                                motion_params=MOTION_DETECTION_PARAMS,
-                               video_url=f"https://youtu.be/{video_id}")
+                               video_url=f"https://youtu.be/{video_id}",
+                               motion_playlist_url=f"https://www.youtube.com/playlist?list={motion_playlist_id}")
 
         # Create the plain-text version of the message
         text_maker = html2text.HTML2Text()
@@ -258,11 +266,11 @@ def process_video(video_id: str, yt: google_services.YouTube,
         LOGGER.debug("Changed working directory to %s.", os.getcwd())
 
         # Record no motion if the recording is unavailable
-        if "This live stream recording is not available." in error.msg:
+        if "This live stream recording is not available." in error.msg or "This live event has ended." in error.msg:
             update_motion_status(yt.get_service(), video_id,
                                  {"suffix": "(no motion)",
                                   "description": "No motion was detected in this video as the recording is not available 😢."})
-            print("Marked the video as having no motion.")
+            print("Marked the video as having no motion.\n")
 
         return
 
@@ -279,7 +287,7 @@ def process_video(video_id: str, yt: google_services.YouTube,
         update_motion_status(
             yt.get_service(), video_id, motion)
         if len(motion) > 0:
-            send_motion_email(email_config, video_id, motion)
+            send_motion_email(email_config, video_id, motion, yt_config["motion_playlist_id"])
             yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
         else:
             try:
@@ -324,7 +332,6 @@ def main():
                 if "motion" not in video["snippet"]["description"].lower() and \
                         video["status"]["privacyStatus"] != "private":
                     new_ids.append(video["id"])
-            new_ids.reverse()
             LOGGER.debug("new_ids is: %s.", new_ids)
 
             # Tell the user if they're all done
