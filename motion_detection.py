@@ -19,6 +19,7 @@ import html2text
 import humanize
 import send2trash
 import yt_dlp
+from dvr_scan.region import Point
 from jinja2 import Template
 from pytz import timezone
 
@@ -45,8 +46,8 @@ MOTION_DETECTION_PARAMS = {
     "min_event_len": 30 * 3,
     "time_pre_event": "0s",
     "time_post_event": "0s",
-    "roi": [33, 37, 145, 84],
-    # Rectangle of form [x y w h] representing bounding box of subset of each frame to look at
+    # List of regions of interest (ROI) to scan for motion
+    "regions": [[Point(33, 37), Point(178, 37), Point(178, 121), Point(33, 121)]],
     "threshold": 0.5  # the threshold for motion 0 < t < 1, default 0.15
 }
 
@@ -98,7 +99,7 @@ def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
         threshold=MOTION_DETECTION_PARAMS["threshold"]
     )
     scan.set_regions(
-        roi_deprecated=MOTION_DETECTION_PARAMS["roi"]
+        regions=MOTION_DETECTION_PARAMS["regions"]
     )
     motion = scan.scan().event_list
     result = []
