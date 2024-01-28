@@ -23,7 +23,7 @@ CONFIG_FILENAME = "config.ini"
 TIMEZONE = timezone("Europe/London")
 
 # The filename to use for the log file
-LOG_FILENAME = f"birdbox-livestream-yt-livestream-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
+LOG_FILENAME = f"birdbox-livestream-yt-cleanup-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
 
 
 def ask_yes_or_no():
