@@ -12,6 +12,7 @@ __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
+from utilities import DatetimeFormat as DTFormat
 import utilities
 from yt_livestream import YouTubeLivestream
 from yt_types import YouTubePlaylist, YouTubeLiveBroadcast
@@ -23,7 +24,7 @@ CONFIG_FILENAME = "config.ini"
 TIMEZONE = timezone("Europe/London")
 
 # The filename to use for the log file
-LOG_FILENAME = f"birdbox-livestream-yt-cleanup-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
+LOG_FILENAME = f"birdbox-livestream-yt-cleanup-{datetime.now(tz=TIMEZONE).strftime(DTFormat.get_datetime_format(time_sep='.'))}.txt"
 
 
 def ask_yes_or_no():
@@ -118,7 +119,8 @@ def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
     playlists: List[YouTubePlaylist] = []
     for playlist in all_playlists:
         if ": w/c" in playlist["snippet"]["title"]:
-            date = datetime.strptime(playlist["snippet"]["title"][-11:], "%d %b %Y")
+            date = datetime.strptime(playlist["snippet"]["title"][-11:],
+                                     DTFormat.get_pretty_date_format(day=False))
             if (start_date and date < start_date) or (end_date and date > end_date):
                 continue
             if playlist["status"]["privacyStatus"] == privacy:
