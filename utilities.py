@@ -65,24 +65,28 @@ class DatetimeFormat:
         return f"{DatetimeFormat.get_date_format(date_sep)}{sep}{DatetimeFormat.get_time_format(time_sep, seconds, tz)}"
 
     @staticmethod
-    def get_pretty_date_format(day: bool = True) -> str:
+    def get_pretty_date_format(day: bool = True, year: bool = True) -> str:
         """Returns the pretty date format string.
 
         :param day: whether to include the day
         :type day: bool
+        :param year: whether to include the year
+        :type year: bool
         :return: the pretty date format string
         :rtype: str
         """
 
-        return f"{'%a ' if day else ''}%d %b %Y"
+        return f"{'%a ' if day else ''}%d %b{' %Y' if year else ''}"
 
     @staticmethod
-    def get_pretty_datetime_format(day: bool = True, time_sep: str = ":",
+    def get_pretty_datetime_format(day: bool = True, year: bool = True, time_sep: str = ":",
                                    seconds: bool = True, tz: bool = False) -> str:
         """Returns the pretty datetime format string.
 
         :param day: whether to include the day
         :type day: bool
+        :param year: whether to include the year
+        :type year: bool
         :param time_sep: the time separator to use
         :type time_sep: str
         :param seconds: whether to include seconds
@@ -93,7 +97,7 @@ class DatetimeFormat:
         :rtype: str
         """
 
-        return f"{DatetimeFormat.get_pretty_date_format(day)} at {DatetimeFormat.get_time_format(time_sep, seconds, tz)}"
+        return f"{DatetimeFormat.get_pretty_date_format(day, year)} at {DatetimeFormat.get_time_format(time_sep, seconds, tz)}"
 
 
 
