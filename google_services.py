@@ -162,23 +162,22 @@ class GoogleService:
         :rtype: Any
         """
 
-        count = 0
+        count = 1
         limit = 5
         while count < limit:
             try:
                 response = request.execute()
                 return response
-            except (BrokenPipeError, IOError, googleapiclient.errors.HttpError) as error:
+            except (BrokenPipeError, IOError, googleapiclient.errors.HttpError):
                 LOGGER.exception(
                     "There was an error with executing the request!")
                 count += 1
-                if count >= limit:
-                    raise IOError from error
                 LOGGER.debug("Continuing in 60...")
                 time.sleep(60)
 
-        # Catch-all
-        return Exception("Request failed after 5 retries.")
+        # Final attempt, any error here will not be caught
+        response = request.execute()
+        return response
 
     @func_set_timeout(AUTHORISATION_TIMEOUT)
     def pushbullet_request_response(self, title: str, url: str) -> str:
