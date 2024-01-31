@@ -27,6 +27,7 @@ import google_services
 import utilities
 import yt_livestream
 import yt_types
+from utilities import DatetimeFormat as dtf
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -39,7 +40,7 @@ CONFIG_FILENAME = "config.ini"
 TIMEZONE = timezone("Europe/London")
 
 # The filename to use for the log file
-LOG_FILENAME = f"birdbox-livestream-motion-detection-{datetime.now(tz=TIMEZONE).strftime('%Y-%m-%d %H-%M-%S %Z')}.txt"
+LOG_FILENAME = f"birdbox-livestream-motion-detection-{datetime.now(tz=TIMEZONE).strftime(dtf.get_datetime_format(time_sep='.'))}.txt"
 
 # All the motion detection parameters
 MOTION_DETECTION_PARAMS = {
