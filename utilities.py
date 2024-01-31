@@ -42,7 +42,8 @@ class DatetimeFormat:
         return f"%Y{sep}%m{sep}%d"
 
     @staticmethod
-    def get_datetime_format(sep: str = " ", date_sep: str = "-", time_sep: str = ":") -> str:
+    def get_datetime_format(sep: str = " ", date_sep: str = "-", time_sep: str = ":",
+                            seconds: bool = True) -> str:
         """Returns the datetime format string.
 
         :param sep: the separator to use
@@ -51,11 +52,13 @@ class DatetimeFormat:
         :type date_sep: str
         :param time_sep: the time separator to use
         :type time_sep: str
+        :param seconds: whether to include seconds
+        :type seconds: bool
         :return: the datetime format string
         :rtype: str
         """
 
-        return f"{DatetimeFormat.get_date_format(date_sep)}{sep}{DatetimeFormat.get_time_format(time_sep)}"
+        return f"{DatetimeFormat.get_date_format(date_sep)}{sep}{DatetimeFormat.get_time_format(time_sep, seconds)}"
 
     @staticmethod
     def get_pretty_date_format(day: bool = True) -> str:
