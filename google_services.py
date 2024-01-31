@@ -145,7 +145,8 @@ class GoogleService:
                      self.token_file)
 
         # Create and return the authenticated service
-        service = build(self.service_name, self.service_version, credentials=credentials)
+        service = build(self.service_name, self.service_version, credentials=credentials,
+                        cache_discovery=False)
 
         assert os.path.exists(self.token_file)
 
