@@ -12,6 +12,83 @@ from email.mime.text import MIMEText
 from pathlib import Path
 
 
+class DatetimeFormat:
+    """A class to hold the datetime format strings."""
+
+    @staticmethod
+    def get_time_format(sep: str = ":", seconds: bool = True) -> str:
+        """Returns the time format string.
+
+        :param sep: the separator to use
+        :type sep: str
+        :param seconds: whether to include seconds
+        :type seconds: bool
+        :return: the time format string
+        :rtype: str
+        """
+
+        return f"%H{sep}%M{(f'{sep}%S' if seconds else '')}"
+
+    @staticmethod
+    def get_date_format(sep: str = "-") -> str:
+        """Returns the date format string.
+
+        :param sep: the separator to use
+        :type sep: str
+        :return: the date format string
+        :rtype: str
+        """
+
+        return f"%Y{sep}%m{sep}%d"
+
+    @staticmethod
+    def get_datetime_format(sep: str = " ", date_sep: str = "-", time_sep: str = ":") -> str:
+        """Returns the datetime format string.
+
+        :param sep: the separator to use
+        :type sep: str
+        :param date_sep: the date separator to use
+        :type date_sep: str
+        :param time_sep: the time separator to use
+        :type time_sep: str
+        :return: the datetime format string
+        :rtype: str
+        """
+
+        return f"{DatetimeFormat.get_date_format(date_sep)}{sep}{DatetimeFormat.get_time_format(time_sep)}"
+
+    @staticmethod
+    def get_pretty_date_format(day: bool = True) -> str:
+        """Returns the pretty date format string.
+
+        :param day: whether to include the day
+        :type day: bool
+        :return: the pretty date format string
+        :rtype: str
+        """
+
+        return f"{'%a ' if day else ''}%d %b %Y"
+
+    @staticmethod
+    def get_pretty_datetime_format(day: bool = True, time_sep: str = ":",
+                                   seconds: bool = True) -> str:
+        """Returns the pretty datetime format string.
+
+        :param day: whether to include the day
+        :type day: bool
+        :param time_sep: the time separator to use
+        :type time_sep: str
+        :param seconds: whether to include seconds
+        :type seconds: bool
+        :return: the pretty datetime format string
+        :rtype: str
+        """
+
+        return f"{DatetimeFormat.get_pretty_date_format(day)} at {DatetimeFormat.get_time_format(time_sep, seconds)}"
+
+
+
+
 def prepare_logging(filename: str, level: int = logging.DEBUG) -> logging.Logger:
     """Prepares logging for the application.
 
