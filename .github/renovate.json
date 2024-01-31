@@ -23,7 +23,6 @@
   "prConcurrentLimit": 20,
   "prHourlyLimit": 10,
   "prTitleStrict": true,
-  "minimumReleaseAge": "3 days",
   "rebaseWhen": "behind-base-branch",
   "separateMinorPatch": true,
   "labels": [
