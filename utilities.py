@@ -16,7 +16,7 @@ class DatetimeFormat:
     """A class to hold the datetime format strings."""
 
     @staticmethod
-    def get_time_format(sep: str = ":", seconds: bool = True, tz: bool = False) -> str:
+    def time_fmt(sep: str = ":", seconds: bool = True, tz: bool = False) -> str:
         """Returns the time format string.
 
         :param sep: the separator to use
@@ -32,7 +32,7 @@ class DatetimeFormat:
         return f"%H{sep}%M{f'{sep}%S' if seconds else ''}{' %Z' if tz else ''}"
 
     @staticmethod
-    def get_date_format(sep: str = "-") -> str:
+    def date_fmt(sep: str = "-") -> str:
         """Returns the date format string.
 
         :param sep: the separator to use
@@ -44,8 +44,8 @@ class DatetimeFormat:
         return f"%Y{sep}%m{sep}%d"
 
     @staticmethod
-    def get_datetime_format(sep: str = " ", date_sep: str = "-", time_sep: str = ":",
-                            seconds: bool = True, tz: bool = False) -> str:
+    def datetime_fmt(sep: str = " ", date_sep: str = "-", time_sep: str = ":",
+                     seconds: bool = True, tz: bool = False) -> str:
         """Returns the datetime format string.
 
         :param sep: the separator to use
@@ -62,10 +62,10 @@ class DatetimeFormat:
         :rtype: str
         """
 
-        return f"{DatetimeFormat.get_date_format(date_sep)}{sep}{DatetimeFormat.get_time_format(time_sep, seconds, tz)}"
+        return f"{DatetimeFormat.date_fmt(date_sep)}{sep}{DatetimeFormat.time_fmt(time_sep, seconds, tz)}"
 
     @staticmethod
-    def get_pretty_date_format(day: bool = True, year: bool = True) -> str:
+    def pretty_date_fmt(day: bool = True, year: bool = True) -> str:
         """Returns the pretty date format string.
 
         :param day: whether to include the day
@@ -79,8 +79,8 @@ class DatetimeFormat:
         return f"{'%a ' if day else ''}%d %b{' %Y' if year else ''}"
 
     @staticmethod
-    def get_pretty_datetime_format(day: bool = True, year: bool = True, time_sep: str = ":",
-                                   seconds: bool = True, tz: bool = False) -> str:
+    def pretty_datetime_fmt(day: bool = True, year: bool = True, time_sep: str = ":",
+                            seconds: bool = True, tz: bool = False) -> str:
         """Returns the pretty datetime format string.
 
         :param day: whether to include the day
@@ -97,7 +97,7 @@ class DatetimeFormat:
         :rtype: str
         """
 
-        return f"{DatetimeFormat.get_pretty_date_format(day, year)} at {DatetimeFormat.get_time_format(time_sep, seconds, tz)}"
+        return f"{DatetimeFormat.pretty_date_fmt(day, year)} at {DatetimeFormat.time_fmt(time_sep, seconds, tz)}"
 
 
 

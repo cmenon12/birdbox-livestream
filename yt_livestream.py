@@ -23,7 +23,7 @@ from pytz import timezone
 import google_services
 import utilities
 import yt_types
-from utilities import DatetimeFormat as DTFormat
+from utilities import DatetimeFormat as DTFmt
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -39,7 +39,7 @@ TIMEZONE = timezone("Europe/London")
 MAX_SCHEDULED_BROADCASTS = 2
 
 # The filename to use for the log file
-LOG_FILENAME = f"birdbox-livestream-yt-livestream-{datetime.now(tz=TIMEZONE).strftime(DTFormat.get_datetime_format(time_sep='.'))}.txt"
+LOG_FILENAME = f"birdbox-livestream-yt-livestream-{datetime.now(tz=TIMEZONE).strftime(DTFmt.datetime_fmt(time_sep='.'))}.txt"
 
 
 class BroadcastTypes(Enum):
@@ -99,7 +99,7 @@ class YouTubeLivestream(google_services.YouTube):
                     "contentDetails": {
                         "isReusable": True},
                     "snippet": {
-                        "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).strftime(DTFormat.get_datetime_format(tz=True))}"}}))
+                        "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).strftime(DTFmt.datetime_fmt(tz=True))}"}}))
         LOGGER.debug("Stream is: \n%s.", json.dumps(stream, indent=4))
 
         # Save and return it
@@ -145,14 +145,14 @@ class YouTubeLivestream(google_services.YouTube):
         if start_time in self.get_broadcasts().keys():
             LOGGER.debug(
                 "Returning existing broadcast at %s.",
-                start_time.strftime(DTFormat.get_datetime_format(tz=True)))
+                start_time.strftime(DTFmt.datetime_fmt(tz=True)))
             LOGGER.info("Broadcast scheduled successfully!\n")
             return self.get_broadcasts()[start_time]
 
         # Round the end time to the nearest 6 hours
         end_time = start_time.astimezone(TIMEZONE) + timedelta(minutes=360)
         LOGGER.debug("End time with no rounding is %s.",
-                     end_time.strftime(DTFormat.get_datetime_format(tz=True)))
+                     end_time.strftime(DTFmt.datetime_fmt(tz=True)))
 
         # If it's going to be tomorrow at midnight
         if round(end_time.hour / 6) * 6 >= 24:
@@ -166,11 +166,11 @@ class YouTubeLivestream(google_services.YouTube):
                                         hour=round(end_time.hour / 6) * 6)
         LOGGER.debug(
             "End time to the nearest hour is %s.",
-            end_time.strftime(DTFormat.get_datetime_format(tz=True)))
+            end_time.strftime(DTFmt.datetime_fmt(tz=True)))
 
         # Create a description
-        description = f"A livestream of the birdbox starting on {start_time.strftime(DTFormat.get_pretty_datetime_format(time_sep='.', seconds=False))}" \
-                      f" and ending at {end_time.strftime(DTFormat.get_time_format(sep='.', seconds=False))} ({str(TIMEZONE.zone)} timezone). "
+        description = f"A livestream of the birdbox starting on {start_time.strftime(DTFmt.pretty_datetime_fmt(time_sep='.', seconds=False))}" \
+                      f" and ending at {end_time.strftime(DTFmt.time_fmt(sep='.', seconds=False))} ({str(TIMEZONE.zone)} timezone). "
 
         # Schedule a new broadcast
         LOGGER.debug("Scheduling a new broadcast...")
@@ -190,7 +190,7 @@ class YouTubeLivestream(google_services.YouTube):
                     "snippet": {
                         "scheduledStartTime": start_time.isoformat(),
                         "scheduledEndTime": end_time.isoformat(),
-                        "title": f"Birdbox on {start_time.strftime(DTFormat.get_pretty_datetime_format(seconds=False))}",
+                        "title": f"Birdbox on {start_time.strftime(DTFmt.pretty_datetime_fmt(seconds=False))}",
                         "description": description},
                     "status": {
                         "privacyStatus": self.config["privacy_status"],
@@ -204,7 +204,7 @@ class YouTubeLivestream(google_services.YouTube):
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
         print(
-            f"Scheduled a broadcast at {start_time.strftime(DTFormat.get_datetime_format(tz=True))} till {end_time.strftime(DTFormat.get_datetime_format(tz=True))}")
+            f"Scheduled a broadcast at {start_time.strftime(DTFmt.datetime_fmt(tz=True))} till {end_time.strftime(DTFmt.datetime_fmt(tz=True))}")
         LOGGER.info("Broadcast scheduled successfully!\n")
         return broadcast
 
@@ -226,7 +226,7 @@ class YouTubeLivestream(google_services.YouTube):
         # Check that this broadcast exists.
         if start_time not in self.scheduled_broadcasts:
             raise ValueError(
-                f"The broadcast at {start_time.strftime(DTFormat.get_datetime_format(tz=True))} is not scheduled!")
+                f"The broadcast at {start_time.strftime(DTFmt.datetime_fmt(tz=True))} is not scheduled!")
 
         # Bind the broadcast to the stream
         LOGGER.debug("Binding the broadcast to the stream...")
@@ -299,7 +299,7 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Return it
         print(
-            f"Started a broadcast at {start_time.strftime(DTFormat.get_datetime_format(tz=True))}")
+            f"Started a broadcast at {start_time.strftime(DTFmt.datetime_fmt(tz=True))}")
         LOGGER.info("Broadcast started successfully!\n")
         return broadcast
 
@@ -321,7 +321,7 @@ class YouTubeLivestream(google_services.YouTube):
         # Check that this broadcast exists
         if start_time not in self.live_broadcasts:
             raise ValueError(
-                f"The broadcast at {start_time.strftime(DTFormat.get_datetime_format(tz=True))} is not live!")
+                f"The broadcast at {start_time.strftime(DTFmt.datetime_fmt(tz=True))} is not live!")
 
         # Change its status to complete
         LOGGER.debug("Transitioning the broadcastStatus to complete...")
@@ -349,7 +349,7 @@ class YouTubeLivestream(google_services.YouTube):
         # Save and return the updated resource
         self.live_broadcasts.pop(start_time)
         print(
-            f"Ended a broadcast that started at {start_time.strftime(DTFormat.get_datetime_format(tz=True))}")
+            f"Ended a broadcast that started at {start_time.strftime(DTFmt.datetime_fmt(tz=True))}")
         LOGGER.info("Broadcast ended successfully!\n")
         return self.finished_broadcasts[start_time]
 
@@ -536,9 +536,9 @@ class YouTubeLivestream(google_services.YouTube):
             if "starting on" in description:
                 old_start_time = description[40:64]
                 new_description = description.replace(old_start_time, start_time.strftime(
-                    DTFormat.get_pretty_datetime_format(time_sep='.', seconds=False)))
+                    DTFmt.pretty_datetime_fmt(time_sep='.', seconds=False)))
                 LOGGER.debug("New description is: %s.", new_description)
-                new_title = f"Birdbox on {start_time.strftime(DTFormat.get_pretty_datetime_format(seconds=False))}"
+                new_title = f"Birdbox on {start_time.strftime(DTFmt.pretty_datetime_fmt(seconds=False))}"
                 self.update_video_metadata(video_id, title=new_title, description=new_description)
 
             # If asked then raise exception
@@ -551,8 +551,8 @@ class YouTubeLivestream(google_services.YouTube):
                 old_end_time = description[79:84]
                 new_description = description.replace(old_end_time,
                                                       end_time.strftime(
-                                                          DTFormat.get_time_format(sep='.',
-                                                                                   seconds=False)))
+                                                          DTFmt.time_fmt(sep='.',
+                                                                         seconds=False)))
                 LOGGER.debug("New description is: %s.", new_description)
                 self.update_video_metadata(video_id, description=new_description)
 
@@ -582,7 +582,7 @@ class YouTubeLivestream(google_services.YouTube):
                 start_time -
                 timedelta(
                     days=start_time.weekday())).strftime(
-            f"W%W: w/c {DTFormat.get_pretty_date_format(day=False)}")
+            f"W%W: w/c {DTFmt.pretty_date_fmt(day=False)}")
 
         # Only get the playlist for this week if we don't already have it
         if self.week_playlist is None or self.week_playlist["snippet"]["title"] != playlist_title:
@@ -599,7 +599,7 @@ class YouTubeLivestream(google_services.YouTube):
             else:
                 # Create a new playlist
                 LOGGER.debug("Creating a new playlist...")
-                description = f"This playlist has videos of the birdbox from {(start_time - timedelta(days=start_time.weekday())).strftime(DTFormat.get_pretty_date_format(year=False))} to {(start_time - timedelta(days=start_time.weekday() - 6)).strftime(DTFormat.get_pretty_date_format(year=False))}. "
+                description = f"This playlist has videos of the birdbox from {(start_time - timedelta(days=start_time.weekday())).strftime(DTFmt.pretty_date_fmt(year=False))} to {(start_time - timedelta(days=start_time.weekday() - 6)).strftime(DTFmt.pretty_date_fmt(year=False))}. "
                 self.week_playlist: yt_types.YouTubePlaylist = self.execute_request(
                     self.get_service().playlists().insert(
                         part="id,snippet,status", body={
@@ -638,7 +638,7 @@ class YouTubeLivestream(google_services.YouTube):
         # Calculate the playlist title
         playlist_title = (start_time - timedelta(
             days=start_time.weekday())).strftime(
-            f"W%W: w/c {DTFormat.get_pretty_date_format(day=False)}")
+            f"W%W: w/c {DTFmt.pretty_date_fmt(day=False)}")
 
         if all_playlists is None:
             all_playlists = self.list_all_playlists()
