@@ -3,7 +3,6 @@ import json
 import logging
 import sys
 from datetime import datetime
-from typing import List
 
 from pick import pick
 from pytz import timezone
@@ -55,7 +54,7 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
     LOGGER.info(locals())
 
     # Download all videos
-    videos: List[YouTubeLiveBroadcast] = []
+    videos: list[YouTubeLiveBroadcast] = []
     all_videos = yt.list_all_broadcasts(part="id,snippet,status", broadcast_status="completed")
     for video in all_videos:
         if "(no motion)" in video["snippet"]["title"]:
@@ -115,7 +114,7 @@ def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
 
     # Download all playlists
     all_playlists = yt.list_all_playlists()
-    playlists: List[YouTubePlaylist] = []
+    playlists: list[YouTubePlaylist] = []
     for playlist in all_playlists:
         if ": w/c" in playlist["snippet"]["title"]:
             date = datetime.strptime(playlist["snippet"]["title"][-11:], "%d %b %Y")

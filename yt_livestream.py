@@ -15,7 +15,7 @@ import time
 import traceback
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Optional, Dict, List
+from typing import Optional
 
 import googleapiclient
 from pytz import timezone
@@ -62,11 +62,11 @@ class YouTubeLivestream(google_services.YouTube):
 
         self.live_stream: Optional[yt_types.YouTubeLiveStream] = None
         self.week_playlist: Optional[yt_types.YouTubePlaylist] = None
-        self.scheduled_broadcasts: Dict[datetime,
+        self.scheduled_broadcasts: dict[datetime,
         yt_types.YouTubeLiveBroadcast] = {}
-        self.finished_broadcasts: Dict[datetime,
+        self.finished_broadcasts: dict[datetime,
         yt_types.YouTubeLiveBroadcast] = {}
-        self.live_broadcasts: Dict[datetime,
+        self.live_broadcasts: dict[datetime,
         yt_types.YouTubeLiveBroadcast] = {}
 
     def get_stream(self) -> yt_types.YouTubeLiveStream:
@@ -349,14 +349,14 @@ class YouTubeLivestream(google_services.YouTube):
         return self.finished_broadcasts[start_time]
 
     def get_broadcasts(self,
-                       category: BroadcastTypes = None) -> Dict[datetime,
+                       category: BroadcastTypes = None) -> dict[datetime,
     yt_types.YouTubeLiveBroadcast]:
         """Returns a dict with the broadcasts
 
         :param category: the category of broadcasts if not all
         :type category: BroadcastTypes
         :return: a dict of the broadcasts
-        :rtype: Dict[datetime, yt_types.YouTubeLiveBroadcast]
+        :rtype: dict[datetime, yt_types.YouTubeLiveBroadcast]
         """
 
         if category == BroadcastTypes.SCHEDULED:
@@ -371,7 +371,7 @@ class YouTubeLivestream(google_services.YouTube):
             **self.finished_broadcasts}
 
     def list_all_broadcasts(self, part: str, broadcast_status: str = None,
-                            broadcast_id: List[str] = None) -> List[yt_types.YouTubeLiveBroadcast]:
+                            broadcast_id: list[str] = None) -> list[yt_types.YouTubeLiveBroadcast]:
         """Fetch and return all the user's broadcasts.
 
         :param part: the comma-separated properties to fetch
@@ -379,9 +379,9 @@ class YouTubeLivestream(google_services.YouTube):
         :param broadcast_status: the broadcast status of the broadcasts to fetch
         :type broadcast_status: str
         :param broadcast_id: a list of IDs to fetch
-        :type broadcast_id: List[str]
+        :type broadcast_id: list[str]
         :return: all the broadcasts
-        :rtype: List[yt_types.YouTubeLiveBroadcast]
+        :rtype: list[yt_types.YouTubeLiveBroadcast]
         """
 
         LOGGER.debug("Fetching all the broadcasts...")
@@ -622,7 +622,7 @@ class YouTubeLivestream(google_services.YouTube):
         return broadcasts[0]["status"]
 
     def delete_broadcast(self, video_id: str, start_time: datetime,
-                         all_playlists: List[yt_types.YouTubePlaylist] = None):
+                         all_playlists: list[yt_types.YouTubePlaylist] = None):
         """Delete a broadcast and remove it from its playlist."""
 
         LOGGER.info("Deleting broadcast %s...", video_id)

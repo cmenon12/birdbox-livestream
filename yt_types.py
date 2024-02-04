@@ -1,5 +1,5 @@
 import sys
-from typing import List, Dict, Union
+from typing import Union
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict, Literal  # pylint: disable=no-name-in-module
@@ -95,7 +95,7 @@ class YouTubeLiveBroadcastList(TypedDict, total=False):
     nextPageToken: str
     prevPageToken: str
     pageInfo: PageInfo
-    items: List[YouTubeLiveBroadcast]
+    items: list[YouTubeLiveBroadcast]
 
 
 class StreamSnippet(TypedDict, total=False):
@@ -129,7 +129,7 @@ class StreamConfigurationIssue(TypedDict, total=False):
 class StreamHealthStatus(TypedDict, total=False):
     status: str
     lastUpdateTimeSeconds: int
-    configurationIssues: List[StreamConfigurationIssue]
+    configurationIssues: list[StreamConfigurationIssue]
 
 
 class StreamStatus(TypedDict, total=False):
@@ -158,7 +158,7 @@ class YouTubeLiveStreamList(TypedDict, total=False):
     nextPageToken: str
     prevPageToken: str
     pageInfo: PageInfo
-    items: List[YouTubeLiveStream]
+    items: list[YouTubeLiveStream]
 
 
 class PlaylistItemResourceId(TypedDict, total=False):
@@ -207,7 +207,7 @@ class YouTubePlaylistItemList(TypedDict, total=False):
     nextPageToken: str
     prevPageToken: str
     pageInfo: PageInfo
-    items: List[YouTubePlaylistItem]
+    items: list[YouTubePlaylistItem]
 
 
 class Localization(TypedDict, total=False):
@@ -217,7 +217,7 @@ class Localization(TypedDict, total=False):
 
 class VideoSnippet(Snippet):
     channelTitle: str
-    tags: List[str]
+    tags: list[str]
     categoryId: str
     liveBroadcastContent: str
     defaultLanguage: str
@@ -230,19 +230,19 @@ class YouTubeVideo(TypedDict, total=False):
     etag: str
     id: str
     snippet: VideoSnippet
-    contentDetails: Dict[str, Union[str, bool,
-                                    Dict[str, Union[str, List[str]]],]]
-    status: Dict[str, Union[str, bool]]
-    statistics: Dict[str, int]
-    player: Dict[str, Union[str, int]]
-    topicDetails: Dict[str, List[str]]
-    recordingDetails: Dict[str, str]
-    fileDetails: Dict[str, Union[str, int,
-                                 List[Dict[str, Union[int, float, str]]]]]
-    processingDetails: Dict[str, Union[str, Dict[str, int]]]
-    suggestions: Dict[str, Union[List[str], Dict[str, Union[str, List[str]]]]]
-    liveStreamingDetails: Dict[str, Union[str, int]]
-    localizations: Dict[str, Dict[str, str]]
+    contentDetails: dict[str, Union[str, bool,
+    dict[str, Union[str, list[str]]],]]
+    status: dict[str, Union[str, bool]]
+    statistics: dict[str, int]
+    player: dict[str, Union[str, int]]
+    topicDetails: dict[str, list[str]]
+    recordingDetails: dict[str, str]
+    fileDetails: dict[str, Union[str, int,
+    list[dict[str, Union[int, float, str]]]]]
+    processingDetails: dict[str, Union[str, dict[str, int]]]
+    suggestions: dict[str, Union[list[str], dict[str, Union[str, list[str]]]]]
+    liveStreamingDetails: dict[str, Union[str, int]]
+    localizations: dict[str, dict[str, str]]
 
 
 class YouTubeVideoList(TypedDict, total=False):
@@ -251,7 +251,7 @@ class YouTubeVideoList(TypedDict, total=False):
     nextPageToken: str
     prevPageToken: str
     pageInfo: PageInfo
-    items: List[YouTubeVideo]
+    items: list[YouTubeVideo]
 
 
 class PlaylistSnippet(Snippet):
@@ -276,7 +276,7 @@ class YouTubePlaylist(TypedDict, total=False):
     status: Status
     contentDetails: PlaylistContentDetails
     player: PlaylistPlayer
-    localizations: Dict[str, Dict[str, str]]
+    localizations: dict[str, dict[str, str]]
 
 
 class YouTubePlaylistList(TypedDict, total=False):
@@ -285,4 +285,4 @@ class YouTubePlaylistList(TypedDict, total=False):
     nextPageToken: str
     prevPageToken: str
     pageInfo: PageInfo
-    items: List[YouTubePlaylist]
+    items: list[YouTubePlaylist]

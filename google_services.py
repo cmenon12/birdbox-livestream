@@ -7,7 +7,7 @@ import time
 import traceback
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import google
 import googleapiclient
@@ -53,13 +53,13 @@ class GoogleService:
     :param service_version: the version of the service
     :type service_version: str
     :param scopes: the scopes to use
-    :type scopes: List[str]
+    :type scopes: list[str]
     :param token_file: the file to store the token in
     :type token_file: Optional[str]
     """
 
     def __init__(self, config: configparser.SectionProxy, service_name: str,
-                 service_version: str, scopes: List[str], token_file: Optional[str] = None):
+                 service_version: str, scopes: list[str], token_file: Optional[str] = None):
 
         self.config = config
         self.service_name = service_name
@@ -250,11 +250,11 @@ class YouTube(GoogleService):
 
         super().__init__(config, "youtube", "v3", ["https://www.googleapis.com/auth/youtube"], token_file)
 
-    def list_all_playlists(self) -> List[yt_types.YouTubePlaylist]:
+    def list_all_playlists(self) -> list[yt_types.YouTubePlaylist]:
         """Fetch all the playlists.
 
         :return: the playlists
-        :rtype: List[yt_types.YouTubePlaylist]
+        :rtype: list[yt_types.YouTubePlaylist]
         """
 
         LOGGER.debug("Fetching all the playlists...")

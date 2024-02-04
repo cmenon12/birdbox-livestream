@@ -11,7 +11,7 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import List, Dict, Union
+from typing import Union
 
 import dvr_scan.scanner as dvr_scanner
 import googleapiclient
@@ -78,13 +78,13 @@ def download_video(video_id: str) -> str:
     return filename
 
 
-def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
+def get_motion_timestamps(filename: str) -> list[dict[str, str]]:
     """Detect motion and return a list of motion events.
 
     :param filename: the video file to search
     :type filename: str
     :return: a list of motion events
-    :rtype: List[Dict[str, str]]
+    :rtype: list[dict[str, str]]
     """
 
     LOGGER.info("Detecting motion...")
@@ -116,7 +116,7 @@ def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
 def update_motion_status(
         service: googleapiclient.discovery.Resource,
         video_id: str,
-        motion: Union[List[Dict[str, str]], Dict[str, str]]) -> None:
+        motion: Union[list[dict[str, str]], dict[str, str]]) -> None:
     """Update the video with motion information.
 
     :param service: the YouTube API service
@@ -124,7 +124,7 @@ def update_motion_status(
     :param video_id: the ID of the video to update
     :type video_id: str
     :param motion: a list of motion events or description & suffix
-    :type motion: Union[List[Dict[str, str]], Dict[str, str]]
+    :type motion: Union[list[dict[str, str]], dict[str, str]]
     """
 
     LOGGER.info("Appending to the video description...")
@@ -174,7 +174,7 @@ def update_motion_status(
 def send_motion_email(
         config: configparser.SectionProxy,
         video_id: str,
-        motion: List[Dict[str, str]],
+        motion: list[dict[str, str]],
         motion_playlist_id: str) -> None:
     """Send an email about the motion that was detected.
 
@@ -183,7 +183,7 @@ def send_motion_email(
     :param video_id: the ID of the video
     :type video_id: str
     :param motion: a list of the motion events detected
-    :type motion: List[Dict[str, str]]
+    :type motion: list[dict[str, str]]
     :param motion_playlist_id: the ID of the motion playlist
     :type motion_playlist_id: str
     """
