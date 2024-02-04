@@ -678,7 +678,7 @@ class YouTubeLivestream(google_services.YouTube):
             if not broadcast["snippet"].get("scheduledStartTime"):
                 LOGGER.debug("Broadcast with ID %s has no scheduled start time, skipping.", broadcast["id"])
                 continue
-            start_time = datetime.strptime(broadcast["snippet"]["scheduledStartTime"], "%Y-%m-%dT%H:%M:%SZ")
+            start_time = datetime.fromisoformat(broadcast["snippet"]["scheduledStartTime"])
 
             self.delete_broadcast(broadcast["id"], start_time, all_playlists)
 
