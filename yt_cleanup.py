@@ -60,7 +60,7 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
     all_videos = yt.list_all_broadcasts(part="id,snippet,status", broadcast_status="completed")
     for video in all_videos:
         if "(no motion)" in video["snippet"]["title"]:
-            date = datetime.fromisoformat(video["snippet"]["scheduledStartTime"])
+            date = yt.parse_scheduled_time(video["snippet"]["scheduledStartTime"])
             if (start_date and date < start_date) or (end_date and date > end_date):
                 continue
             if video["status"]["privacyStatus"] == privacy:
@@ -80,7 +80,7 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
     for video in videos:
 
         if privacy == "delete":
-            start_time = datetime.fromisoformat(video["snippet"]["scheduledStartTime"])
+            start_time = yt.parse_scheduled_time(video["snippet"]["scheduledStartTime"])
             yt.delete_broadcast(video["id"], start_time, all_playlists)
             yt.execute_request(yt.get_service().videos().delete(
                 id=video["id"]

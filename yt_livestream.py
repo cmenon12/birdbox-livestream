@@ -282,9 +282,8 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Update the description to point to the next one
         time.sleep(10)
-        end_time = datetime.fromisoformat(
-            self.live_broadcasts[start_time]["snippet"]["scheduledEndTime"].replace(
-                "Z", "+00:00"))
+        end_time = self.parse_scheduled_time(
+            self.live_broadcasts[start_time]["snippet"]["scheduledEndTime"])
         broadcasts = self.get_broadcasts(BroadcastTypes.ALL)
         if end_time in broadcasts.keys():
             description = f"{self.live_broadcasts[start_time]['snippet']['description']} Watch the next part here: https://youtu.be/{broadcasts[end_time]['id']}."
@@ -678,11 +677,23 @@ class YouTubeLivestream(google_services.YouTube):
             if not broadcast["snippet"].get("scheduledStartTime"):
                 LOGGER.debug("Broadcast with ID %s has no scheduled start time, skipping.", broadcast["id"])
                 continue
-            start_time = datetime.fromisoformat(broadcast["snippet"]["scheduledStartTime"])
+            start_time = self.parse_scheduled_time(broadcast["snippet"]["scheduledStartTime"])
 
             self.delete_broadcast(broadcast["id"], start_time, all_playlists)
 
         LOGGER.info("Unused broadcasts cleaned up successfully!")
+
+    @staticmethod
+    def parse_scheduled_time(time_str: str) -> datetime:
+        """Parse a scheduled time string into a datetime object.
+
+        :param time_str: the time string to parse
+        :type time_str: str
+        :return: the parsed datetime object
+        :rtype: datetime
+        """
+
+        return datetime.fromisoformat(time_str.replace("Z", "+00:00")).astimezone(TIMEZONE)
 
 
 def process_broadcasts(now: datetime, yt: YouTubeLivestream, pause_time: int = 5):
@@ -695,9 +706,7 @@ def process_broadcasts(now: datetime, yt: YouTubeLivestream, pause_time: int = 5
     if len(scheduled) < int(MAX_SCHEDULED_BROADCASTS):
         last_start_time = max(scheduled.keys()) if len(scheduled) != 0 else max(live.keys())
         last_broadcast = scheduled[last_start_time]
-        start_time = datetime.fromisoformat(
-            last_broadcast["snippet"]["scheduledEndTime"].replace(
-                "Z", "+00:00")).astimezone(TIMEZONE)
+        start_time = yt.parse_scheduled_time(last_broadcast["snippet"]["scheduledEndTime"])
         yt.schedule_broadcast(start_time)
 
     time.sleep(pause_time)
@@ -720,9 +729,7 @@ def process_broadcasts(now: datetime, yt: YouTubeLivestream, pause_time: int = 5
 
     # Finish broadcasts
     for start_time in live.keys():
-        end_time = datetime.fromisoformat(
-            live[start_time]["snippet"]["scheduledEndTime"].replace(
-                "Z", "+00:00"))
+        end_time = yt.parse_scheduled_time(live[start_time]["snippet"]["scheduledEndTime"])
         if end_time <= now:
             yt.end_broadcast(start_time)
             yt.update_video_times(live[start_time]["id"], end_time=datetime.now(tz=TIMEZONE))
