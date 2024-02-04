@@ -100,8 +100,6 @@ class DatetimeFormat:
         return f"{DatetimeFormat.pretty_date_fmt(day, year)} at {DatetimeFormat.time_fmt(time_sep, seconds, tz)}"
 
 
-
-
 def prepare_logging(filename: str, level: int = logging.DEBUG) -> logging.Logger:
     """Prepares logging for the application.
 
