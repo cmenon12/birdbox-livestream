@@ -12,6 +12,94 @@ from email.mime.text import MIMEText
 from pathlib import Path
 
 
+class DatetimeFormat:
+    """A class to hold the datetime format strings."""
+
+    @staticmethod
+    def time_fmt(sep: str = ":", seconds: bool = True, tz: bool = False) -> str:
+        """Returns the time format string.
+
+        :param sep: the separator to use
+        :type sep: str
+        :param seconds: whether to include seconds
+        :type seconds: bool
+        :param tz: whether to include the timezone
+        :type tz: bool
+        :return: the time format string
+        :rtype: str
+        """
+
+        return f"%H{sep}%M{f'{sep}%S' if seconds else ''}{' %Z' if tz else ''}"
+
+    @staticmethod
+    def date_fmt(sep: str = "-") -> str:
+        """Returns the date format string.
+
+        :param sep: the separator to use
+        :type sep: str
+        :return: the date format string
+        :rtype: str
+        """
+
+        return f"%Y{sep}%m{sep}%d"
+
+    @staticmethod
+    def datetime_fmt(sep: str = " ", date_sep: str = "-", time_sep: str = ":",
+                     seconds: bool = True, tz: bool = False) -> str:
+        """Returns the datetime format string.
+
+        :param sep: the separator to use
+        :type sep: str
+        :param date_sep: the date separator to use
+        :type date_sep: str
+        :param time_sep: the time separator to use
+        :type time_sep: str
+        :param seconds: whether to include seconds
+        :type seconds: bool
+        :param tz: whether to include the timezone
+        :type tz: bool
+        :return: the datetime format string
+        :rtype: str
+        """
+
+        return f"{DatetimeFormat.date_fmt(date_sep)}{sep}{DatetimeFormat.time_fmt(time_sep, seconds, tz)}"
+
+    @staticmethod
+    def pretty_date_fmt(day: bool = True, year: bool = True) -> str:
+        """Returns the pretty date format string.
+
+        :param day: whether to include the day
+        :type day: bool
+        :param year: whether to include the year
+        :type year: bool
+        :return: the pretty date format string
+        :rtype: str
+        """
+
+        return f"{'%a ' if day else ''}%d %b{' %Y' if year else ''}"
+
+    @staticmethod
+    def pretty_datetime_fmt(day: bool = True, year: bool = True, time_sep: str = ":",
+                            seconds: bool = True, tz: bool = False) -> str:
+        """Returns the pretty datetime format string.
+
+        :param day: whether to include the day
+        :type day: bool
+        :param year: whether to include the year
+        :type year: bool
+        :param time_sep: the time separator to use
+        :type time_sep: str
+        :param seconds: whether to include seconds
+        :type seconds: bool
+        :param tz: whether to include the timezone
+        :type tz: bool
+        :return: the pretty datetime format string
+        :rtype: str
+        """
+
+        return f"{DatetimeFormat.pretty_date_fmt(day, year)} at {DatetimeFormat.time_fmt(time_sep, seconds, tz)}"
+
+
 def prepare_logging(filename: str, level: int = logging.DEBUG) -> logging.Logger:
     """Prepares logging for the application.
 
