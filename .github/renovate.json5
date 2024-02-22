@@ -39,11 +39,11 @@
     "description": "Group and automerge all patch updates together every day at 4pm"
   },
   "minor": {
-    "dependencyDashboardApproval": true,
+    "dependencyDashboardApproval": false,
     "description": "Require dashboard approval to create minor PRs"
   },
   "major": {
-    "dependencyDashboardApproval": true,
+    "dependencyDashboardApproval": false,
     "description": "Require dashboard approval to create major PRs"
   },
   "packageRules": [
