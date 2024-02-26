@@ -751,7 +751,7 @@ def main():
 
         # Create the stream
         url = yt.get_stream_url()
-        print(f"\n  {url}\n")
+        print(f"\n    {url}    \n")
 
         # Wait for the user to start streaming
         LOGGER.debug("Waiting for the stream status to be active...")
