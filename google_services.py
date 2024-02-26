@@ -12,7 +12,7 @@ from typing import Any, List, Optional
 import google
 import googleapiclient
 from func_timeout import func_set_timeout, FunctionTimedOut
-from google.auth.exceptions import RefreshError
+from google.auth.exceptions import RefreshError, TransportError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -104,7 +104,32 @@ class GoogleService:
 
     def get_service(self,
                     auth_type: AuthorisationTypes = AuthorisationTypes.PUSHBULLET) -> google.auth.credentials.Credentials:
-        """Authenticates the API, returning the service.
+        """Authenticates the API safely, returning the service.
+
+        :return: the API service (a Resource)
+        :rtype: google.auth.credentials.Credentials
+        """
+
+        LOGGER.info("Authorising service...")
+
+        count = 1
+        limit = 5
+        while count < limit:
+            try:
+                return self.__get_service_once(auth_type)
+            except TransportError:
+                LOGGER.exception(
+                    "There was an error with getting the service!")
+                count += 1
+                LOGGER.debug("Continuing in 60...")
+                time.sleep(60)
+
+        # Final attempt, any error here will not be caught
+        return self.__get_service_once(auth_type)
+
+    def __get_service_once(self,
+                           auth_type: AuthorisationTypes) -> google.auth.credentials.Credentials:
+        """Authenticates the API once unsafely, returning the service.
 
         :return: the API service (a Resource)
         :rtype: google.auth.credentials.Credentials
