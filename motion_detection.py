@@ -288,8 +288,11 @@ def process_video(video_id: str, yt: google_services.YouTube,
         update_motion_status(
             yt.get_service(), video_id, motion)
         if len(motion) > 0:
-            send_motion_email(email_config, video_id, motion, yt_config["motion_playlist_id"])
             yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
+            # Wait before sending the email, as YouTube does not show the updated metadata straight away
+            print("Motion detected! Waiting 60 seconds before sending the email...")
+            time.sleep(60)
+            send_motion_email(email_config, video_id, motion, yt_config["motion_playlist_id"])
         else:
             try:
                 send2trash.send2trash(filename)
