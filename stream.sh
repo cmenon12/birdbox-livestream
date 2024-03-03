@@ -2,6 +2,10 @@
 
 read -e -p "What's the RTMP URL? " url
 
+url_no_whitespace="$(echo -e "${url}" | tr -d '[:space:]')"
+
+echo "$url_no_whitespace"
+
 while true
 do
   # -t timeout in ms before stopping capture, 0 to disable
@@ -38,7 +42,7 @@ do
   # -preset compression to encoding speed ration, faster=CPU keeps up better
   # the url variable
   # -report dump to a log file
-  ffmpeg -re -stream_loop -1 -i ./music/all-variable-120-mono.mp3 -i - -map 1:v -map 0:a -vcodec copy -acodec copy -strict normal -f flv -b:v 3200k -b:a 40k -maxrate 3240k -preset ultrafast $url -report
+  ffmpeg -re -stream_loop -1 -i ./music/all-variable-120-mono.mp3 -i - -map 1:v -map 0:a -vcodec copy -acodec copy -strict normal -f flv -b:v 3200k -b:a 40k -maxrate 3240k -preset ultrafast $url_no_whitespace -report
 
   sleep 30
 done
