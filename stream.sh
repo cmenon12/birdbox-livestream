@@ -4,8 +4,6 @@ read -e -p "What's the RTMP URL? " url
 
 url_no_whitespace="$(echo -e "${url}" | tr -d '[:space:]')"
 
-echo "$url_no_whitespace"
-
 while true
 do
   # -t timeout in ms before stopping capture, 0 to disable
