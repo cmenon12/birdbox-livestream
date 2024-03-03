@@ -24,7 +24,7 @@ do
   # -ae set annotate text size, text colour, and background colour
   # -ISO set capture ISO
   # -b set bitrate in bits per second
-  raspivid -t 0 -w 1280 -h 720 -fps 25 -n -br 60 -co 10 -sh 70 -sa -100 -l -o - -a 1036 -a "%a %d %b %Y at %H:%M:%S %Z" -ae 18,0xff,0x808000 -ISO 600 -b 3200000 |
+  raspivid -t 0 -w 1280 -h 720 -fps 25 -n -br 60 -co 10 -sh 70 -sa -100 -l -o - -a 1036 -a "%a %d %b %Y at %H:%M:%S %Z" -ae 18,0xff,0x808000 -ISO 600 -b 3000000 |
 
   # -re read input at the native framerate
   # -stream_loop loop input indefinitely
@@ -42,7 +42,7 @@ do
   # -preset compression to encoding speed ration, faster=CPU keeps up better
   # the url variable
   # -report dump to a log file
-  ffmpeg -re -stream_loop -1 -i ./music/all-variable-120-mono.mp3 -i - -map 1:v -map 0:a -vcodec copy -acodec copy -strict normal -f flv -b:v 3200k -b:a 40k -maxrate 3240k -preset ultrafast $url_no_whitespace -report
+  ffmpeg -re -stream_loop -1 -i ./music/all-variable-120-mono.mp3 -i - -map 1:v -map 0:a -vcodec copy -acodec copy -strict experimental -f flv -b:v 3000k -b:a 40k -maxrate 3040k -preset ultrafast $url_no_whitespace
 
   sleep 30
 done
