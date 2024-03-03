@@ -26,7 +26,7 @@ __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
 # How long to wait for authorisation (in seconds)
-AUTHORISATION_TIMEOUT = 600
+AUTHORISATION_TIMEOUT = 1800
 
 # File with the OAuth client secret
 CLIENT_SECRET_FILE = "client_secret.json"
@@ -113,7 +113,7 @@ class GoogleService:
         LOGGER.info("Authorising service...")
 
         count = 1
-        limit = 5
+        limit = 10
         while count < limit:
             try:
                 return self.__get_service_once(auth_type)
@@ -189,7 +189,7 @@ class GoogleService:
         """
 
         count = 1
-        limit = 5
+        limit = 10
         while count < limit:
             try:
                 response = request.execute()
