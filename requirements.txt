@@ -1,7 +1,7 @@
 dvr-scan==1.6
 func-timeout==4.3.5
 google-api-python-client==2.122.0
-google-auth==2.28.2
+google-auth==2.29.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.0
 html2text==2024.2.26
