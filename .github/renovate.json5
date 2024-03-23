@@ -1,59 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "github>cmenon12/renovate-config(birdbox-livestream)"
   ],
-  "dependencyDashboardFooter": "View the logs [here](https://developer.mend.io/github/cmenon12/birdbox-livestream).",
-  "assignees": ["cmenon12"],
-  "commitMessageExtra": "{{#if isPinDigest}}from {{{currentDigestShort}}} to {{{newDigestShort}}}{{else}}{{#if isMajor}}from {{currentVersion}} to {{newVersion}} (major){{else}}{{#if isSingleVersion}}from {{currentVersion}} to {{newVersion}}{{else}}{{#if newValue}}from {{{currentValue}}} to {{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}",
-  "commitMessageTopic": "{{depName}}",
-  "prBodyColumns": [
-    "Package",
-    "Type",
-    "Change",
-    "Pending",
-    "Age",
-    "Adoption",
-    "Confidence"
-  ],
-  "prBodyNotes": [
-    "{{#if isMajor}}:rotating_light: Be careful, this is a major update.{{/if}}",
-    "{{#if (equals updateType 'minor')}}:warning: This is a minor update.{{/if}}"
-  ],
-  "prConcurrentLimit": 20,
-  "prHourlyLimit": 10,
-  "prTitleStrict": true,
+  "ignoreTests": false
   // "minimumReleaseAge": "3 days",
-  "rebaseWhen": "behind-base-branch",
-  "separateMinorPatch": true,
-  "labels": [
-    "dependencies"
-  ],
-  "platformCommit": true,
   // "schedule": "after 4pm on Friday",
-  "automergeType": "branch",
-  "patch": {
-    "groupName": "all patch updates",
-    "automerge": true,
-    // "schedule": "after 4pm",
-    "description": "Group and automerge all patch updates together every day at 4pm"
-  },
-  "minor": {
-    "dependencyDashboardApproval": false,
-    "description": "Require dashboard approval to create minor PRs"
-  },
-  "major": {
-    "dependencyDashboardApproval": false,
-    "description": "Require dashboard approval to create major PRs"
-  },
-  "packageRules": [
-    {
-      "matchPackageNames": ["google-api-python-client"],
-      "matchUpdateTypes": ["minor"],
-      "dependencyDashboardApproval": false,
-      "automerge": true,
-      // "schedule": "after 4pm",
-      "description": "Automerge minor updates for this package every day at 4pm"
-    }
-  ]
 }
