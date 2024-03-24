@@ -4,7 +4,7 @@
 
 This is a small collection of Python scripts designed for livestreaming a birdbox from a Raspberry Pi to YouTube!
 
-This is to test the in-solidarity bot and won't be merged! He is the developer. The main system is crippled.
+This is to test the in-solidarity bot and won't be merged! He is the developer. The main system is broken.
 
 ### **[Check out the channel on YouTube!](https://www.youtube.com/channel/UCikUXkTwFvyrHlajBRQwvuw)**
 
