@@ -443,7 +443,7 @@ class YouTubeLivestream(google_services.YouTube):
         :rtype: yt_types.StreamStatus
         """
 
-        streams: list[yt_types.YouTubeLiveStream] = self.execute_request(
+        streams: List[yt_types.YouTubeLiveStream] = self.execute_request(
             self.get_service().liveStreams().list(
                 id=self.livestream_id, part="status"))["items"]
 
@@ -692,7 +692,7 @@ class YouTubeLivestream(google_services.YouTube):
             return False
 
         # Check the stream exists
-        streams: list[yt_types.YouTubeLiveStream] = self.execute_request(
+        streams: List[yt_types.YouTubeLiveStream] = self.execute_request(
             self.get_service().liveStreams().list(
                 id=self.livestream_id, part="id,cdn"))["items"]
         LOGGER.debug("Streams are: \n%s.", json.dumps(streams, indent=4))
