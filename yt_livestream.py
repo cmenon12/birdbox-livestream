@@ -770,8 +770,9 @@ def main():
         # Create a new stream URL and exit if requested
         if options.new_stream_url or not yt.validate_livestream_url(
                 str(yt_config["livestream_url"])):
-            url = yt.get_stream_url()
-            print(f"\nThe new livestream URL is {url}    \n")
+            stream = yt.create_livestream()
+            print(f"\nThe new livestream URL is {stream['url']}    \n")
+            print(f"\nThe new livestream ID is {stream['id']}    \n")
             print("Save this to the config.ini file and rerun the script.")
             return
 
