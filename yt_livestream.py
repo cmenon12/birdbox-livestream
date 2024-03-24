@@ -15,6 +15,7 @@ import time
 import traceback
 from datetime import datetime, timedelta
 from enum import Enum, auto
+from optparse import OptionParser
 from typing import Optional, Dict, List
 
 import googleapiclient
@@ -746,6 +747,22 @@ def main():
     email_config: configparser.SectionProxy = parser["email"]
 
     try:
+        yt = YouTubeLivestream(yt_config)
+
+        # Read the options
+        opt_parser = OptionParser()
+        opt_parser.add_option("--new-stream-url", action="store_true", dest="new_stream",
+                              default=False)
+        options, _ = opt_parser.parse_args()
+
+        # Create a new stream URL and exit if requested
+        if options.new_stream or len(str(yt_config["livestream_url"])) != 56 or str(
+                yt_config["livestream_url"]).lower()[0:25] != "rtmp://x.rtmp.youtube.com":
+            url = yt.get_stream_url()
+            print(f"\nThe new livestream URL is {url}    \n")
+            print("Save this to the config.ini file and rerun the script.")
+            return
+
         yt = YouTubeLivestream(yt_config)
         yt.cleanup_unused_broadcasts()
 
