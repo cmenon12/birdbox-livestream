@@ -434,12 +434,12 @@ class YouTubeLivestream(google_services.YouTube):
         :rtype: yt_types.StreamStatus
         """
 
-        streams: yt_types.YouTubeLiveStreamList = self.execute_request(
+        streams: list[yt_types.YouTubeLiveStream] = self.execute_request(
             self.get_service().liveStreams().list(
-                id=self.livestream_id, part="status"))
+                id=self.livestream_id, part="status"))["items"]
 
-        LOGGER.debug("Stream status is: %s.", streams["items"][0]["status"])
-        return streams["items"][0]["status"]
+        LOGGER.debug("Stream status is: %s.", streams[0]["status"])
+        return streams[0]["status"]
 
     def update_video_metadata(
             self,
