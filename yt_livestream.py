@@ -668,17 +668,29 @@ class YouTubeLivestream(google_services.YouTube):
 
         LOGGER.info("Unused broadcasts cleaned up successfully!")
 
-    @staticmethod
-    def validate_livestream_url(url: str) -> bool:
-        """Validate the livestream URL.
+    def validate_livestream(self) -> bool:
+        """Validate the livestream URL and ID.
 
-        :param url: the URL to validate
-        :type url: str
-        :return: whether the URL is valid
+        :return: whether the URL and ID are valid
         :rtype: bool
         """
 
-        return len(url) == 56 and "rtmp.youtube.com" in url and "rtmp://" in url
+        # Check the URL is syntactically correct
+        if len(self.livestream_url) != 56 or "rtmp.youtube.com" not in self.livestream_url or "rtmp://" not in self.livestream_url:
+            return False
+
+        # Check the stream exists
+        streams: list[yt_types.YouTubeLiveStream] = self.execute_request(
+            self.get_service().liveStreams().list(
+                id=self.livestream_id, part="status"))["items"]
+        if len(streams) != 1:
+            return False
+
+        # Check if the URL matches
+        ingestion_info: yt_types.StreamIngestionInfo = streams[0]["cdn"]["ingestionInfo"]
+        url = f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
+        if url != self.livestream_url:
+            return False
 
     @staticmethod
     def parse_scheduled_time(time_str: str) -> datetime:
