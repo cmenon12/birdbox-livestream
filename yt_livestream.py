@@ -685,6 +685,18 @@ class YouTubeLivestream(google_services.YouTube):
         LOGGER.info("Unused broadcasts cleaned up successfully!")
 
     @staticmethod
+    def validate_livestream_url(url: str) -> bool:
+        """Validate the livestream URL.
+
+        :param url: the URL to validate
+        :type url: str
+        :return: whether the URL is valid
+        :rtype: bool
+        """
+
+        return len(url) == 56 and "rtmp.youtube.com" in url and "rtmp://" in url
+
+    @staticmethod
     def parse_scheduled_time(time_str: str) -> datetime:
         """Parse a scheduled time string into a datetime object.
 
@@ -751,19 +763,18 @@ def main():
 
         # Read the options
         opt_parser = OptionParser()
-        opt_parser.add_option("--new-stream-url", action="store_true", dest="new_stream",
+        opt_parser.add_option("--new-stream-url", action="store_true", dest="new_stream_url",
                               default=False)
         options, _ = opt_parser.parse_args()
 
         # Create a new stream URL and exit if requested
-        if options.new_stream or len(str(yt_config["livestream_url"])) != 56 or str(
-                yt_config["livestream_url"]).lower()[0:25] != "rtmp://x.rtmp.youtube.com":
+        if options.new_stream_url or not yt.validate_livestream_url(
+                str(yt_config["livestream_url"])):
             url = yt.get_stream_url()
             print(f"\nThe new livestream URL is {url}    \n")
             print("Save this to the config.ini file and rerun the script.")
             return
 
-        yt = YouTubeLivestream(yt_config)
         yt.cleanup_unused_broadcasts()
 
         # Create the stream
