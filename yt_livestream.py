@@ -63,7 +63,8 @@ class YouTubeLivestream(google_services.YouTube):
 
         super().__init__(config)
 
-        self.live_stream: Optional[yt_types.YouTubeLiveStream] = None
+        self.livestream_url: Optional[str] = None
+        self.livestream_id: Optional[str] = None
         self.week_playlist: Optional[yt_types.YouTubePlaylist] = None
         self.scheduled_broadcasts: Dict[datetime,
         yt_types.YouTubeLiveBroadcast] = {}
@@ -72,20 +73,18 @@ class YouTubeLivestream(google_services.YouTube):
         self.live_broadcasts: Dict[datetime,
         yt_types.YouTubeLiveBroadcast] = {}
 
-    def get_stream(self) -> yt_types.YouTubeLiveStream:
-        """Gets the livestream, creating it if needed.
+        if self.validate_livestream_url(str(config["livestream_url"])):
+            self.livestream_url = str(config["livestream_url"])
+            self.livestream_id = str(config["livestream_id"])
 
-        :return: the YouTube liveStream resource
-        :rtype: yt_types.YouTubeLiveStream
+    def create_livestream(self) -> dict[str, str]:
+        """Create a new liveStream.
+
+        :return: the YouTube liveStream URL and ID
+        :rtype: dict[str, str]
         """
 
-        LOGGER.info("Getting the livestream...")
-
-        # Return the existing stream
-        if self.live_stream is not None:
-            LOGGER.debug("Returning existing livestream.")
-            LOGGER.info("Livestream fetched and returned successfully!\n")
-            return self.live_stream
+        LOGGER.info("Creating the livestream...")
 
         # Create a new livestream
         LOGGER.debug("Creating a new stream...")
@@ -103,26 +102,11 @@ class YouTubeLivestream(google_services.YouTube):
                         "title": f"Birdbox Livestream at {datetime.now(tz=TIMEZONE).strftime(DTFmt.datetime_fmt(tz=True))}"}}))
         LOGGER.debug("Stream is: \n%s.", json.dumps(stream, indent=4))
 
-        # Save and return it
-        self.live_stream = stream
-        LOGGER.info("Livestream fetched and returned successfully!\n")
-        return stream
-
-    def get_stream_url(self) -> str:
-        """Gets the liveStream URL, creating it if needed.
-
-        :return: the URL of the liveStream
-        :rtype: str
-        """
-
-        LOGGER.info("Getting the livestream URL...")
-
-        ingestion_info: yt_types.StreamIngestionInfo = self.get_stream()[
-            'cdn']['ingestionInfo']
+        # Return it
+        ingestion_info: yt_types.StreamIngestionInfo = stream["cdn"]["ingestionInfo"]
         url = f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
-        LOGGER.debug("Livestream URL is %s.", url)
-        LOGGER.info("Livestream URL fetched and returned successfully!\n")
-        return url
+        LOGGER.info("Livestream URL created and returned successfully!\n")
+        return {"url": url, "id": stream["id"]}
 
     def schedule_broadcast(
             self,
@@ -235,7 +219,7 @@ class YouTubeLivestream(google_services.YouTube):
             self.get_service().liveBroadcasts().bind(
                 id=self.scheduled_broadcasts[start_time]["id"],
                 part="id,snippet,contentDetails,status",
-                streamId=self.get_stream()["id"]))
+                streamId=self.livestream_id))
         LOGGER.debug("Broadcast is: \n%s.", json.dumps(broadcast, indent=4))
 
         limit = 60
@@ -452,7 +436,7 @@ class YouTubeLivestream(google_services.YouTube):
 
         streams: yt_types.YouTubeLiveStreamList = self.execute_request(
             self.get_service().liveStreams().list(
-                id=self.get_stream()["id"], part="status"))
+                id=self.livestream_id, part="status"))
 
         LOGGER.debug("Stream status is: %s.", streams["items"][0]["status"])
         return streams["items"][0]["status"]
@@ -779,7 +763,7 @@ def main():
         yt.cleanup_unused_broadcasts()
 
         # Create the stream
-        url = yt.get_stream_url()
+        url = str(yt_config["livestream_url"])
         print(f"\n    {url}    \n")
 
         # Wait for the user to start streaming
