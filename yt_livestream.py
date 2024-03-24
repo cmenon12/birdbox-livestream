@@ -63,7 +63,7 @@ class YouTubeLivestream(google_services.YouTube):
         super().__init__(config)
 
         self.livestream_url: Optional[str] = str(config["livestream_url"])
-        self.livestream_id: Optional[str] = str(config["livestream_url"])
+        self.livestream_id: Optional[str] = str(config["livestream_id"])
         self.week_playlist: Optional[yt_types.YouTubePlaylist] = None
         self.scheduled_broadcasts: Dict[datetime,
         yt_types.YouTubeLiveBroadcast] = {}
@@ -77,16 +77,18 @@ class YouTubeLivestream(google_services.YouTube):
             LOGGER.info("Livestream URL and ID are invalid, creating new ones...")
             print("Livestream URL and ID are invalid, creating new ones...")
             stream = self.create_livestream()
-            print(f"\nThe new livestream URL is {stream['url']}    \n")
-            print(f"\nThe new livestream ID is {stream['id']}    \n")
+            print(f"\nThe new livestream URL is {stream['url']}    ")
+            print(f"The new livestream ID is {stream['id']}    \n")
             print("Save these to the config.ini file to avoid recreating them next time.")
+        else:
+            LOGGER.info("Livestream URL and ID are valid!")
+            print(f"\n    {self.livestream_url}    \n")
 
-
-    def create_livestream(self) -> dict[str, str]:
+    def create_livestream(self) -> Dict[str, str]:
         """Create a new liveStream.
 
         :return: the YouTube liveStream URL and ID
-        :rtype: dict[str, str]
+        :rtype: Dict[str, str]
         """
 
         LOGGER.info("Creating the livestream...")
@@ -682,22 +684,31 @@ class YouTubeLivestream(google_services.YouTube):
         :rtype: bool
         """
 
+        LOGGER.info("Validating the livestream...")
+
         # Check the URL is syntactically correct
         if len(self.livestream_url) != 56 or "rtmp.youtube.com" not in self.livestream_url or "rtmp://" not in self.livestream_url:
+            LOGGER.info("Livestream URL is syntactically incorrect (%s).", self.livestream_url)
             return False
 
         # Check the stream exists
         streams: list[yt_types.YouTubeLiveStream] = self.execute_request(
             self.get_service().liveStreams().list(
-                id=self.livestream_id, part="status"))["items"]
+                id=self.livestream_id, part="id,cdn"))["items"]
+        LOGGER.debug("Streams are: \n%s.", json.dumps(streams, indent=4))
         if len(streams) != 1:
+            LOGGER.info("There are %d streams with ID=%s.", len(streams), self.livestream_id)
             return False
 
         # Check if the URL matches
         ingestion_info: yt_types.StreamIngestionInfo = streams[0]["cdn"]["ingestionInfo"]
         url = f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
         if url != self.livestream_url:
+            LOGGER.info("Livestream URLs do not match (%s != %s).", url, self.livestream_url)
             return False
+
+        LOGGER.info("Livestream URL and ID are valid!")
+        return True
 
     @staticmethod
     def parse_scheduled_time(time_str: str) -> datetime:
@@ -764,10 +775,6 @@ def main():
     try:
         yt = YouTubeLivestream(yt_config)
         yt.cleanup_unused_broadcasts()
-
-        # Create the stream
-        url = str(yt_config["livestream_url"])
-        print(f"\n    {url}    \n")
 
         # Wait for the user to start streaming
         LOGGER.debug("Waiting for the stream status to be active...")
