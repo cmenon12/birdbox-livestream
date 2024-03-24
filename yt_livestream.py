@@ -15,7 +15,6 @@ import time
 import traceback
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from optparse import OptionParser
 from typing import Optional, Dict, List
 
 import googleapiclient
@@ -63,8 +62,8 @@ class YouTubeLivestream(google_services.YouTube):
 
         super().__init__(config)
 
-        self.livestream_url: Optional[str] = None
-        self.livestream_id: Optional[str] = None
+        self.livestream_url: Optional[str] = str(config["livestream_url"])
+        self.livestream_id: Optional[str] = str(config["livestream_url"])
         self.week_playlist: Optional[yt_types.YouTubePlaylist] = None
         self.scheduled_broadcasts: Dict[datetime,
         yt_types.YouTubeLiveBroadcast] = {}
@@ -73,9 +72,15 @@ class YouTubeLivestream(google_services.YouTube):
         self.live_broadcasts: Dict[datetime,
         yt_types.YouTubeLiveBroadcast] = {}
 
-        if self.validate_livestream_url(str(config["livestream_url"])):
-            self.livestream_url = str(config["livestream_url"])
-            self.livestream_id = str(config["livestream_id"])
+        # Check the livestream and recreate it if needed
+        if not self.validate_livestream():
+            LOGGER.info("Livestream URL and ID are invalid, creating new ones...")
+            print("Livestream URL and ID are invalid, creating new ones...")
+            stream = self.create_livestream()
+            print(f"\nThe new livestream URL is {stream['url']}    \n")
+            print(f"\nThe new livestream ID is {stream['id']}    \n")
+            print("Save these to the config.ini file to avoid recreating them next time.")
+
 
     def create_livestream(self) -> dict[str, str]:
         """Create a new liveStream.
@@ -105,6 +110,8 @@ class YouTubeLivestream(google_services.YouTube):
         # Return it
         ingestion_info: yt_types.StreamIngestionInfo = stream["cdn"]["ingestionInfo"]
         url = f"{ingestion_info['ingestionAddress']}/{ingestion_info['streamName']}"
+        self.livestream_url = url
+        self.livestream_id = stream["id"]
         LOGGER.info("Livestream URL created and returned successfully!\n")
         return {"url": url, "id": stream["id"]}
 
@@ -756,22 +763,6 @@ def main():
 
     try:
         yt = YouTubeLivestream(yt_config)
-
-        # Read the options
-        opt_parser = OptionParser()
-        opt_parser.add_option("--new-stream-url", action="store_true", dest="new_stream_url",
-                              default=False)
-        options, _ = opt_parser.parse_args()
-
-        # Create a new stream URL and exit if requested
-        if options.new_stream_url or not yt.validate_livestream_url(
-                str(yt_config["livestream_url"])):
-            stream = yt.create_livestream()
-            print(f"\nThe new livestream URL is {stream['url']}    \n")
-            print(f"\nThe new livestream ID is {stream['id']}    \n")
-            print("Save this to the config.ini file and rerun the script.")
-            return
-
         yt.cleanup_unused_broadcasts()
 
         # Create the stream
