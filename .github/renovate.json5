@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "github>cmenon12/renovate-config(birdbox-livestream)"
+    "github>cmenon12/config(birdbox-livestream)"
   ],
   "ignoreTests": false
   // "minimumReleaseAge": "3 days",
