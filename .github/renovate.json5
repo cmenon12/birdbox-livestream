@@ -3,7 +3,6 @@
   "extends": [
     "github>cmenon12/config(birdbox-livestream)"
   ],
-  "ignoreTests": false
-  // "minimumReleaseAge": "3 days",
-  // "schedule": "after 4pm on Friday",
+  "ignoreTests": false,
+  "schedule": "after 4pm on Friday"
 }
