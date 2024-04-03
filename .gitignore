@@ -144,3 +144,5 @@ save_data.json
 *.part
 *.pickle
 *.ytdl
+test_*.py
+*frozen.txt
