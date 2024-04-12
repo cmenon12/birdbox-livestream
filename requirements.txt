@@ -12,7 +12,7 @@ pick==2.2.0
 progress-bar==8
 pushbullet.py==0.12.0
 pytz==2024.1
-Send2Trash==1.8.2
+Send2Trash==1.8.3
 typing_extensions==4.11.0
 tzlocal==5.2
 yt-dlp==2024.3.10
