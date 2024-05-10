@@ -80,7 +80,6 @@ class YouTubeLivestream(google_services.YouTube):
             LOGGER.info("The new livestream ID is    %s    ", stream["id"])
             LOGGER.info("Save these to the config.ini file to avoid recreating them next time.")
         else:
-            LOGGER.info("Livestream URL and ID are valid!")
             LOGGER.info("\n    %s    \n", self.livestream_url)
 
     def create_livestream(self) -> Dict[str, str]:

@@ -310,6 +310,10 @@ def main():
     email_config = config["email"]
     motion_config = config["motion_detection"]
 
+    # Remove console output from DVR logger
+    dvr_logger = logging.getLogger("dvr_scan")
+    dvr_logger.handlers = []
+
     # Save the directories
     old_cwd = os.getcwd()
     download_folder = Path(motion_config["download_folder"]) if \
@@ -366,7 +370,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--download-only", action="store_true")
     args = parser.parse_args()
-    LOGGER.info("Args are: %s.", args)
+    LOGGER.debug("Args are: %s.", args)
 
     # Run it
     main()
