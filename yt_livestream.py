@@ -128,7 +128,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Scheduling the broadcast...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Use now if not specified
         if not start_time:
@@ -214,7 +214,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Starting the broadcast...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Check that this broadcast exists.
         if start_time not in self.scheduled_broadcasts:
@@ -306,7 +306,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Ending the broadcast...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Check that this broadcast exists
         if start_time not in self.live_broadcasts:
@@ -462,7 +462,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Updating the video metadata...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Get the existing snippet details
         videos: yt_types.YouTubeVideoList = self.execute_request(
@@ -505,7 +505,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Updating the video times...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Edge case where both are None
         if start_time is None and end_time is None:
@@ -564,7 +564,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Adding the video to the week's playlist...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Calculate the title
         playlist_title = (

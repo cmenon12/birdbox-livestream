@@ -53,7 +53,7 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
     """
 
     LOGGER.info("Updating videos...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
 
     # Download all videos
     videos: List[YouTubeLiveBroadcast] = []
@@ -112,7 +112,7 @@ def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
     """
 
     LOGGER.info("Updating playlists...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
 
     # Download all playlists
     all_playlists = yt.list_all_playlists()

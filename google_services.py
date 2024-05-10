@@ -311,7 +311,7 @@ class YouTube(GoogleService):
         """
 
         LOGGER.info("Adding the video to the playlist...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Add the video to the playlist
         playlist_item: yt_types.YouTubePlaylistItem = self.execute_request(
@@ -341,7 +341,7 @@ class YouTube(GoogleService):
         """
 
         LOGGER.info("Deleting the video from the playlist...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # List all the playlist items
         next_page_token = ""

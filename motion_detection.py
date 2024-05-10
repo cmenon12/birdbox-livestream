@@ -63,7 +63,7 @@ def download_video(video_id: str) -> str:
     """
 
     LOGGER.info("Downloading video...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
     ydl_opts = {
         "format": "160",
         "final_ext": "mp4",
@@ -89,7 +89,7 @@ def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
     """
 
     LOGGER.info("Detecting motion...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
     scan = dvr_scanner.MotionScanner([filename], show_progress=True)
     scan.set_event_params(
         min_event_len=MOTION_DETECTION_PARAMS["min_event_len"],
@@ -129,7 +129,7 @@ def update_motion_status(
     """
 
     LOGGER.info("Appending to the video description...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
 
     # Get the existing snippet details
     videos: yt_types.YouTubeVideoList = yt_livestream.YouTubeLivestream.execute_request(
