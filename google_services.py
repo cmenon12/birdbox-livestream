@@ -81,7 +81,7 @@ class GoogleService:
         if auth_type is AuthorisationTypes.BROWSER:
             flow = InstalledAppFlow.from_client_secrets_file(
                 CLIENT_SECRET_FILE, self.scopes)
-            print("Your browser should open automatically.")
+            LOGGER.info("Your browser should open automatically.")
             return flow.run_local_server(port=0)
 
         # Tell the user to authorise it themselves
@@ -90,11 +90,11 @@ class GoogleService:
                 CLIENT_SECRET_FILE, self.scopes,
                 redirect_uri="http://localhost:1/")
             auth_url, _ = flow.authorization_url(prompt="consent")
-            print(
-                f"Please visit this URL to authorise this application: {auth_url}")
+            LOGGER.info(
+                "Please visit this URL to authorise this application:\n%s", auth_url)
             if auth_type is AuthorisationTypes.PUSHBULLET and str(
                     self.config["pushbullet_access_token"]).lower() != "false":
-                print("Requesting via Pushbullet...")
+                LOGGER.info("Requesting via Pushbullet...")
                 code = self.pushbullet_request_response(
                     "Google API Authorisation", auth_url)
             else:

@@ -190,7 +190,6 @@ if __name__ == "__main__":
 
     # Prepare the log
     LOGGER = utilities.prepare_logging(LOG_FILENAME)
-    LOGGER.addHandler(logging.StreamHandler(sys.stdout))
 
     # Run it
     main()

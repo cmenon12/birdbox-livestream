@@ -146,8 +146,7 @@ def load_config(filename: str) -> configparser.ConfigParser():
         open(filename)  # pylint: disable=unspecified-encoding
         LOGGER.info("Loaded config %s.", filename)
     except FileNotFoundError as error:
-        print("The config file doesn't exist!")
-        LOGGER.info("Could not find config %s, exiting.", filename)
+        LOGGER.error("Could not find config %s, exiting.", filename)
         time.sleep(5)
         raise FileNotFoundError("The config file doesn't exist!") from error
 
