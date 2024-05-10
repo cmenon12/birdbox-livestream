@@ -110,7 +110,7 @@ class GoogleService:
         :rtype: google.auth.credentials.Credentials
         """
 
-        LOGGER.info("Authorising service...")
+        LOGGER.debug("Authorising service...")
 
         count = 1
         limit = 10
@@ -135,7 +135,7 @@ class GoogleService:
         :rtype: google.auth.credentials.Credentials
         """
 
-        LOGGER.info("Authorising service...")
+        LOGGER.debug("Authorising service...")
 
         # Attempt to access pre-existing credentials
         if os.path.exists(self.token_file):
@@ -175,7 +175,7 @@ class GoogleService:
 
         assert os.path.exists(self.token_file)
 
-        LOGGER.info("Service authorised successfully!\n")
+        LOGGER.debug("Service authorised successfully!")
         return service
 
     @staticmethod
