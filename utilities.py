@@ -4,6 +4,7 @@ import logging
 import re
 import smtplib
 import ssl
+import sys
 import time
 from email import encoders
 from email.mime.base import MIMEBase
@@ -100,27 +101,35 @@ class DatetimeFormat:
         return f"{DatetimeFormat.pretty_date_fmt(day, year)} at {DatetimeFormat.time_fmt(time_sep, seconds, tz)}"
 
 
-def prepare_logging(filename: str, level: int = logging.DEBUG) -> logging.Logger:
+def prepare_logging(filename: str) -> logging.Logger:
     """Prepares logging for the application.
 
     :param filename: the name of the file that's being logged
     :type filename: str
-    :param level: the logging level to use
-    :type level: int
     :return: the logger
     :rtype: logging.Logger
     """
 
     Path("./logs").mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(
-        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
-        level=level,
-        handlers=[
-            logging.FileHandler(
-                f"./logs/{filename}",
-                mode="a",
-                encoding="utf-8")])
-    return logging.getLogger(__name__)
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s"
+    )
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+
+    file_handler = logging.FileHandler(
+        f"./logs/{filename}",
+        encoding="utf-8"
+    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    return logger
 
 
 def load_config(filename: str) -> configparser.ConfigParser():
