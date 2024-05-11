@@ -63,7 +63,7 @@ def download_video(video_id: str) -> str:
     """
 
     LOGGER.info("Downloading video...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
     ydl_opts = {
         "format": "160",
         "final_ext": "mp4",
@@ -89,7 +89,7 @@ def get_motion_timestamps(filename: str) -> List[Dict[str, str]]:
     """
 
     LOGGER.info("Detecting motion...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
     scan = dvr_scanner.MotionScanner([filename], show_progress=True)
     scan.set_event_params(
         min_event_len=MOTION_DETECTION_PARAMS["min_event_len"],
@@ -129,7 +129,7 @@ def update_motion_status(
     """
 
     LOGGER.info("Appending to the video description...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
 
     # Get the existing snippet details
     videos: yt_types.YouTubeVideoList = yt_livestream.YouTubeLivestream.execute_request(
@@ -247,7 +247,7 @@ def process_video(video_id: str, yt: google_services.YouTube,
     """
 
     # pylint: disable=used-before-assignment
-    print(f"{'Downloading' if args.download_only else 'Processing'} {video_id}...")
+    LOGGER.info("%s %s...", "Downloading" if args.download_only else "Processing", video_id)
 
     # Try to download the video, but just skip for now if it fails
     try:
@@ -261,8 +261,6 @@ def process_video(video_id: str, yt: google_services.YouTube,
     except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError) as error:
         LOGGER.exception(
             "There was an error with downloading the video!")
-        print("There was an error with downloading the video!")
-        print(f"{traceback.format_exc()}\n")
         os.chdir(old_cwd)
         LOGGER.debug("Changed working directory to %s.", os.getcwd())
 
@@ -271,7 +269,7 @@ def process_video(video_id: str, yt: google_services.YouTube,
             update_motion_status(yt.get_service(), video_id,
                                  {"suffix": "(no motion)",
                                   "description": "No motion was detected in this video as the recording is not available 😢."})
-            print("Marked the video as having no motion.\n")
+            LOGGER.info("Marked the video as having no motion.\n")
 
         return
 
@@ -290,19 +288,17 @@ def process_video(video_id: str, yt: google_services.YouTube,
         if len(motion) > 0:
             yt.add_to_playlist(video_id, yt_config["motion_playlist_id"])
             # Wait before sending the email, as YouTube does not show the updated metadata straight away
-            print("Motion detected! Waiting 60 seconds before sending the email...")
+            LOGGER.info("Motion detected! Waiting 60 seconds before sending the email...")
             time.sleep(60)
             send_motion_email(email_config, video_id, motion, yt_config["motion_playlist_id"])
         else:
             try:
                 send2trash.send2trash(filename)
-            except send2trash.TrashPermissionError as error:
+            except send2trash.TrashPermissionError:
                 LOGGER.exception("Could not delete %s!", filename)
-                print(f"Could not delete {filename}!")
-                print(str(error))
-                print(traceback.format_exc())
 
-    print(f"{'Downloaded' if args.download_only else 'Processed'} {video_id} successfully!\n")
+    LOGGER.info("%s %s successfully!\n", "Downloaded" if args.download_only else "Processed",
+                video_id)
 
 
 def main():
@@ -313,6 +309,10 @@ def main():
     yt_config = config["YouTubeLivestream"]
     email_config = config["email"]
     motion_config = config["motion_detection"]
+
+    # Remove console output from DVR logger
+    dvr_logger = logging.getLogger("dvr_scan")
+    dvr_logger.handlers = []
 
     # Save the directories
     old_cwd = os.getcwd()
@@ -340,7 +340,7 @@ def main():
 
             # Tell the user if they're all done
             if new_ids == [] and all_done is False:
-                print("No new videos to process!")
+                LOGGER.info("No new videos to process!")
                 all_done = True
             elif new_ids != [] and all_done is True:
                 all_done = False
@@ -370,7 +370,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--download-only", action="store_true")
     args = parser.parse_args()
-    LOGGER.info("Args are: %s.", args)
+    LOGGER.debug("Args are: %s.", args)
 
     # Run it
     main()

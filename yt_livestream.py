@@ -75,14 +75,12 @@ class YouTubeLivestream(google_services.YouTube):
         # Check the livestream and recreate it if needed
         if not self.validate_livestream():
             LOGGER.info("Livestream URL and ID are invalid, creating new ones...")
-            print("Livestream URL and ID are invalid, creating new ones...")
             stream = self.create_livestream()
-            print(f"\nThe new livestream URL is {stream['url']}    ")
-            print(f"The new livestream ID is {stream['id']}    \n")
-            print("Save these to the config.ini file to avoid recreating them next time.")
+            LOGGER.info("The new livestream URL is    %s    ", stream["url"])
+            LOGGER.info("The new livestream ID is    %s    ", stream["id"])
+            LOGGER.info("Save these to the config.ini file to avoid recreating them next time.")
         else:
-            LOGGER.info("Livestream URL and ID are valid!")
-            print(f"\n    {self.livestream_url}    \n")
+            LOGGER.info("\n    %s    \n", self.livestream_url)
 
     def create_livestream(self) -> Dict[str, str]:
         """Create a new liveStream.
@@ -129,7 +127,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Scheduling the broadcast...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Use now if not specified
         if not start_time:
@@ -197,9 +195,9 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Save and return it
         self.scheduled_broadcasts[start_time] = broadcast
-        print(
-            f"Scheduled a broadcast at {start_time.strftime(DTFmt.datetime_fmt(tz=True))} till {end_time.strftime(DTFmt.datetime_fmt(tz=True))}")
-        LOGGER.info("Broadcast scheduled successfully!\n")
+        LOGGER.info("Scheduled a broadcast at %s till %s!",
+                    start_time.strftime(DTFmt.datetime_fmt(tz=True)),
+                    end_time.strftime(DTFmt.datetime_fmt(tz=True)))
         return broadcast
 
     def start_broadcast(
@@ -215,7 +213,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Starting the broadcast...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Check that this broadcast exists.
         if start_time not in self.scheduled_broadcasts:
@@ -291,9 +289,7 @@ class YouTubeLivestream(google_services.YouTube):
             self.update_video_metadata(self.live_broadcasts[start_time]["id"])
 
         # Return it
-        print(
-            f"Started a broadcast at {start_time.strftime(DTFmt.datetime_fmt(tz=True))}")
-        LOGGER.info("Broadcast started successfully!\n")
+        LOGGER.info("Started a broadcast at %s!", start_time.strftime(DTFmt.datetime_fmt(tz=True)))
         return broadcast
 
     def end_broadcast(
@@ -309,7 +305,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Ending the broadcast...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Check that this broadcast exists
         if start_time not in self.live_broadcasts:
@@ -341,9 +337,8 @@ class YouTubeLivestream(google_services.YouTube):
 
         # Save and return the updated resource
         self.live_broadcasts.pop(start_time)
-        print(
-            f"Ended a broadcast that started at {start_time.strftime(DTFmt.datetime_fmt(tz=True))}")
-        LOGGER.info("Broadcast ended successfully!\n")
+        LOGGER.info("Ended a broadcast that started at %s",
+                    start_time.strftime(DTFmt.datetime_fmt(tz=True)))
         return self.finished_broadcasts[start_time]
 
     def get_broadcasts(self,
@@ -466,7 +461,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Updating the video metadata...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Get the existing snippet details
         videos: yt_types.YouTubeVideoList = self.execute_request(
@@ -509,7 +504,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Updating the video times...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Edge case where both are None
         if start_time is None and end_time is None:
@@ -568,7 +563,7 @@ class YouTubeLivestream(google_services.YouTube):
         """
 
         LOGGER.info("Adding the video to the week's playlist...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Calculate the title
         playlist_title = (
@@ -777,13 +772,12 @@ def main():
         yt.cleanup_unused_broadcasts()
 
         # Wait for the user to start streaming
-        LOGGER.debug("Waiting for the stream status to be active...")
         stream_status = yt.get_stream_status()
         while stream_status["streamStatus"] != "active":
-            print(f"Waiting because the stream status is:\n{stream_status}.")
+            LOGGER.info("Waiting because the stream status is:\n%s.", stream_status)
             time.sleep(5)
             stream_status = yt.get_stream_status()
-        print(f"Stream status is: {stream_status}.")
+        LOGGER.info("Stream status is: %s.", stream_status)
 
         # Schedule the first broadcast
         yt.schedule_broadcast()

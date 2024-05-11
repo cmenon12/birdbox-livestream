@@ -2,7 +2,7 @@ import configparser
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, date
 from typing import List
 
 from pick import pick
@@ -39,29 +39,29 @@ def ask_yes_or_no():
 
 
 def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
-                            start_date: datetime = None, end_date: datetime = None):
+                            start_date: date = None, end_date: date = None):
     """Delete or update the privacy of the specified weekly playlists.
 
     :param yt: the YouTube Livestream object
     :type yt: YouTubeLivestream
     :param start_date: the start date for videos
-    :type start_date: datetime
+    :type start_date: date
     :param end_date: the end date for videos
-    :type end_date: datetime
+    :type end_date: date
     :param privacy: the privacy status to set
     :type privacy: str
     """
 
     LOGGER.info("Updating videos...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
 
     # Download all videos
     videos: List[YouTubeLiveBroadcast] = []
     all_videos = yt.list_all_broadcasts(part="id,snippet,status", broadcast_status="completed")
     for video in all_videos:
         if "(no motion)" in video["snippet"]["title"]:
-            date = yt.parse_scheduled_time(video["snippet"]["scheduledStartTime"])
-            if (start_date and date < start_date) or (end_date and date > end_date):
+            video_date = yt.parse_scheduled_time(video["snippet"]["scheduledStartTime"]).date()
+            if (start_date and video_date < start_date) or (end_date and video_date > end_date):
                 continue
             if video["status"]["privacyStatus"] == privacy:
                 continue
@@ -82,9 +82,6 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
         if privacy == "delete":
             start_time = yt.parse_scheduled_time(video["snippet"]["scheduledStartTime"])
             yt.delete_broadcast(video["id"], start_time, all_playlists)
-            yt.execute_request(yt.get_service().videos().delete(
-                id=video["id"]
-            ))
             LOGGER.debug("Deleted video %s %s.", video["id"], video["snippet"]["title"])
         else:
             body = {"id": video["id"], "status": {"privacyStatus": "private"}}
@@ -98,30 +95,30 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
 
 
 def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
-                            start_date: datetime = None, end_date: datetime = None):
+                            start_date: date = None, end_date: date = None):
     """Delete or update the privacy of the specified weekly playlists.
 
     :param yt: the YouTube Livestream object
     :type yt: YouTubeLivestream
     :param start_date: the start date for playlists
-    :type start_date: datetime
+    :type start_date: date
     :param end_date: the end date for playlists
-    :type end_date: datetime
+    :type end_date: date
     :param privacy: the privacy status to set
     :type privacy: str
     """
 
     LOGGER.info("Updating playlists...")
-    LOGGER.info(locals())
+    LOGGER.debug(locals())
 
     # Download all playlists
     all_playlists = yt.list_all_playlists()
     playlists: List[YouTubePlaylist] = []
     for playlist in all_playlists:
         if ": w/c" in playlist["snippet"]["title"]:
-            date = datetime.strptime(playlist["snippet"]["title"][-11:],
-                                     DTFmt.pretty_date_fmt(day=False))
-            if (start_date and date < start_date) or (end_date and date > end_date):
+            video_date = datetime.strptime(playlist["snippet"]["title"][-11:],
+                                           DTFmt.pretty_date_fmt(day=False)).date()
+            if (start_date and video_date < start_date) or (end_date and video_date > end_date):
                 continue
             if playlist["status"]["privacyStatus"] == privacy:
                 continue
@@ -171,10 +168,10 @@ def main():
     LOGGER.info("User chose option %s.", option)
 
     start_date = input("Enter the start date (YYYY-MM-DD): ")
-    start_date = datetime.strptime(start_date, DTFmt.date_fmt()) if start_date else None
+    start_date = datetime.strptime(start_date, DTFmt.date_fmt()).date() if start_date else None
 
     end_date = input("Enter the end date (YYYY-MM-DD): ")
-    end_date = datetime.strptime(end_date, DTFmt.date_fmt()) if end_date else None
+    end_date = datetime.strptime(end_date, DTFmt.date_fmt()).date() if end_date else None
 
     if option == "make weekly playlists private":
         update_weekly_playlists(yt, "private", start_date, end_date)
@@ -190,7 +187,6 @@ if __name__ == "__main__":
 
     # Prepare the log
     LOGGER = utilities.prepare_logging(LOG_FILENAME)
-    LOGGER.addHandler(logging.StreamHandler(sys.stdout))
 
     # Run it
     main()

@@ -81,7 +81,7 @@ class GoogleService:
         if auth_type is AuthorisationTypes.BROWSER:
             flow = InstalledAppFlow.from_client_secrets_file(
                 CLIENT_SECRET_FILE, self.scopes)
-            print("Your browser should open automatically.")
+            LOGGER.info("Your browser should open automatically.")
             return flow.run_local_server(port=0)
 
         # Tell the user to authorise it themselves
@@ -90,11 +90,11 @@ class GoogleService:
                 CLIENT_SECRET_FILE, self.scopes,
                 redirect_uri="http://localhost:1/")
             auth_url, _ = flow.authorization_url(prompt="consent")
-            print(
-                f"Please visit this URL to authorise this application: {auth_url}")
+            LOGGER.info(
+                "Please visit this URL to authorise this application:\n%s", auth_url)
             if auth_type is AuthorisationTypes.PUSHBULLET and str(
                     self.config["pushbullet_access_token"]).lower() != "false":
-                print("Requesting via Pushbullet...")
+                LOGGER.info("Requesting via Pushbullet...")
                 code = self.pushbullet_request_response(
                     "Google API Authorisation", auth_url)
             else:
@@ -110,7 +110,7 @@ class GoogleService:
         :rtype: google.auth.credentials.Credentials
         """
 
-        LOGGER.info("Authorising service...")
+        LOGGER.debug("Authorising service...")
 
         count = 1
         limit = 10
@@ -135,7 +135,7 @@ class GoogleService:
         :rtype: google.auth.credentials.Credentials
         """
 
-        LOGGER.info("Authorising service...")
+        LOGGER.debug("Authorising service...")
 
         # Attempt to access pre-existing credentials
         if os.path.exists(self.token_file):
@@ -175,7 +175,7 @@ class GoogleService:
 
         assert os.path.exists(self.token_file)
 
-        LOGGER.info("Service authorised successfully!\n")
+        LOGGER.debug("Service authorised successfully!")
         return service
 
     @staticmethod
@@ -311,7 +311,7 @@ class YouTube(GoogleService):
         """
 
         LOGGER.info("Adding the video to the playlist...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # Add the video to the playlist
         playlist_item: yt_types.YouTubePlaylistItem = self.execute_request(
@@ -341,7 +341,7 @@ class YouTube(GoogleService):
         """
 
         LOGGER.info("Deleting the video from the playlist...")
-        LOGGER.info(locals())
+        LOGGER.debug(locals())
 
         # List all the playlist items
         next_page_token = ""
