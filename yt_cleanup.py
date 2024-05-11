@@ -89,7 +89,7 @@ def update_no_motion_videos(yt: YouTubeLivestream, privacy: str,
                 part="id,status",
                 body=body
             ))
-            LOGGER.debug("Updated video %s %s.", video["id"], video["snippet"]["title"])
+            LOGGER.info("Updated video %s %s.", video["id"], video["snippet"]["title"])
 
     LOGGER.info("Updated the videos successfully!")
 
@@ -138,7 +138,7 @@ def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
             yt.execute_request(yt.get_service().playlists().delete(
                 id=playlist["id"]
             ))
-            LOGGER.debug("Deleted playlist %s %s.", playlist["id"], playlist["snippet"]["title"])
+            LOGGER.info("Deleted playlist %s %s.", playlist["id"], playlist["snippet"]["title"])
         else:
             body = {"id": playlist["id"], "status": {"privacyStatus": "private"},
                     "snippet": {"title": playlist["snippet"]["title"],
@@ -147,7 +147,7 @@ def update_weekly_playlists(yt: YouTubeLivestream, privacy: str,
                 part="id,status,snippet",
                 body=body
             ))
-            LOGGER.debug("Updated playlist %s %s.", playlist["id"], playlist["snippet"]["title"])
+            LOGGER.info("Updated playlist %s %s.", playlist["id"], playlist["snippet"]["title"])
 
     LOGGER.info("Updated the playlists successfully!")
 

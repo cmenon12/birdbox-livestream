@@ -288,7 +288,7 @@ class YouTube(GoogleService):
         while next_page_token is not None:
             response: yt_types.YouTubePlaylistList = self.execute_request(
                 self.get_service().playlists().list(
-                    part="id,snippet",
+                    part="id,snippet,status",
                     mine=True,
                     maxResults=50,
                     pageToken=next_page_token))
