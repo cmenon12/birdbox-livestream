@@ -228,7 +228,8 @@ def send_motion_email(
 
 def process_video(video_id: str, yt: google_services.YouTube,
                   yt_config: configparser.SectionProxy,
-                  download_folder: Path, old_cwd: str,
+                  download_folder: Path, old_cwd: str, 
+                  download_only: bool,
                   email_config: configparser.SectionProxy):
     """Process a video.
 
@@ -247,7 +248,7 @@ def process_video(video_id: str, yt: google_services.YouTube,
     """
 
     # pylint: disable=used-before-assignment
-    LOGGER.info("%s %s...", "Downloading" if args.download_only else "Processing", video_id)
+    LOGGER.info("%s %s...", "Downloading" if download_only else "Processing", video_id)
 
     # Try to download the video, but just skip for now if it fails
     try:
@@ -279,7 +280,7 @@ def process_video(video_id: str, yt: google_services.YouTube,
         humanize.naturalsize(
             os.path.getsize(filename)))
 
-    if not args.download_only:
+    if not download_only:
 
         # Run motion detection
         motion = get_motion_timestamps(filename)
@@ -297,11 +298,11 @@ def process_video(video_id: str, yt: google_services.YouTube,
             except send2trash.TrashPermissionError:
                 LOGGER.exception("Could not delete %s!", filename)
 
-    LOGGER.info("%s %s successfully!\n", "Downloaded" if args.download_only else "Processed",
+    LOGGER.info("%s %s successfully!\n", "Downloaded" if download_only else "Processed",
                 video_id)
 
 
-def main():
+def main(args: argparse.Namespace):
     """Runs the motion detection script indefinitely."""
 
     # Get the config
@@ -347,7 +348,7 @@ def main():
 
             # Process them
             for video_id in new_ids:
-                process_video(video_id, yt, yt_config, download_folder, old_cwd, email_config)
+                process_video(video_id, yt, yt_config, download_folder, old_cwd, args.download_only, email_config)
 
             # Wait before repeating
             time.sleep(15 * 60)
@@ -361,7 +362,6 @@ def main():
         raise Exception from error  # pylint: disable=broad-exception-raised
 
 
-args = parser.parse_args()
 if __name__ == "__main__":
 
     # Prepare the log
@@ -370,10 +370,11 @@ if __name__ == "__main__":
     # Parse the args
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--download-only", action="store_true")
+    args = parser.parse_args()
     LOGGER.debug("Args are: %s.", args)
 
     # Run it
-    main()
+    main(args)
 
 else:
     LOGGER = logging.getLogger(__name__)
