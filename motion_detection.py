@@ -302,8 +302,14 @@ def process_video(video_id: str, yt: google_services.YouTube,
                 video_id)
 
 
-def main(args: argparse.Namespace):
+def main():
     """Runs the motion detection script indefinitely."""
+
+    # Parse the args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--download-only", action="store_true")
+    args = parser.parse_args()
+    LOGGER.debug("Args are: %s.", args)
 
     # Get the config
     config = utilities.load_config(CONFIG_FILENAME)
@@ -367,14 +373,8 @@ if __name__ == "__main__":
     # Prepare the log
     LOGGER = utilities.prepare_logging(LOG_FILENAME)
 
-    # Parse the args
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--download-only", action="store_true")
-    args = parser.parse_args()
-    LOGGER.debug("Args are: %s.", args)
-
     # Run it
-    main(args)
+    main()
 
 else:
     LOGGER = logging.getLogger(__name__)
