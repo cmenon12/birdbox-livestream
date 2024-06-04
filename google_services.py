@@ -369,5 +369,4 @@ class YouTube(GoogleService):
         LOGGER.info("Deleted the video from the playlist successfully!")
 
 
-if __name__ != "__main__":
-    LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)

@@ -222,5 +222,4 @@ def send_error_email(config: configparser.SectionProxy, trace: str,
     LOGGER.info("Error email sent successfully!\n")
 
 
-if __name__ != "__main__":
-    LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
