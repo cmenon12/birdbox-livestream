@@ -361,6 +361,7 @@ def main():
         raise Exception from error  # pylint: disable=broad-exception-raised
 
 
+args = parser.parse_args()
 if __name__ == "__main__":
 
     # Prepare the log
@@ -369,7 +370,6 @@ if __name__ == "__main__":
     # Parse the args
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--download-only", action="store_true")
-    args = parser.parse_args()
     LOGGER.debug("Args are: %s.", args)
 
     # Run it
