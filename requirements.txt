@@ -1,13 +1,13 @@
 dvr-scan==1.6.1
 func-timeout==4.3.5
 google-api-python-client==2.135.0
-google-auth==2.29.0
+google-auth==2.31.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.0
 html2text==2024.2.26
 humanize==4.9.0
 Jinja2==3.1.4
-opencv-python==4.9.0.80
+opencv-python==4.10.0.84
 pick==2.3.2
 progress-bar==8
 pushbullet.py==0.12.0
@@ -15,4 +15,4 @@ pytz==2024.1
 Send2Trash==1.8.3
 typing_extensions==4.12.2
 tzlocal==5.2
-yt-dlp==2024.4.9
+yt-dlp==2024.7.1

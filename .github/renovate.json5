@@ -4,5 +4,5 @@
     "github>cmenon12/config(birdbox-livestream)"
   ],
   "ignoreTests": false,
-  "schedule": "every 1 month on the first day of the month"
+  "schedule": "every 3 months on the first day of the month"
 }
