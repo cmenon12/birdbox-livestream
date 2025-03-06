@@ -11,7 +11,7 @@ opencv-python==4.10.0.84
 pick==2.3.2
 progress-bar==8
 pushbullet.py==0.12.0
-pytz==2024.1
+pytz==2024.2
 Send2Trash==1.8.3
 typing_extensions==4.12.2
 tzlocal==5.2
