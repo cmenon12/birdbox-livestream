@@ -6,7 +6,7 @@ google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.1
 html2text==2024.2.26
 humanize==4.9.0
-Jinja2==3.1.5
+Jinja2==3.1.6
 opencv-python==4.10.0.84
 pick==2.3.2
 progress-bar==8
