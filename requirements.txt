@@ -1,4 +1,4 @@
-dvr-scan==1.6.2
+dvr-scan==1.8.2.1
 func-timeout==4.3.5
 google-api-python-client==2.147.0
 google-auth==2.32.0
